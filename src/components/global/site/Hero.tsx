@@ -1,4 +1,5 @@
 import Image from 'next/image'
+import Link from 'next/link'
 import React from 'react'
 
 const Hero = () => {
@@ -26,10 +27,13 @@ const Hero = () => {
           Discover amazing experiences and unforgettable moments. Join us on a journey 
           of innovation and excellence.
         </p>
+        <Link href="/explore">
         <button className="px-8 py-3 bg-red-700 text-white font-semibold
                   hover:bg-transparent hover:border-white hover:border      ">
           Shop All Trucks
         </button>
+        </Link>
+       
       </div>
     </div>
   )
