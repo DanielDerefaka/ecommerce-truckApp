@@ -1,17 +1,48 @@
-'use client'
+"use client";
 
-import Image from "next/image"
-import { useState } from "react"
-import { MinusIcon, PlusIcon, StarIcon } from 'lucide-react'
+import Image from "next/image";
+import { useState } from "react";
+import { MinusIcon, PlusIcon, StarIcon } from "lucide-react";
 
-import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useToast } from "@/hooks/use-toast";
+import { addToCart } from "@/lib/queries";
+
 
 export default function ProductDetailPage({ product }) {
-  const [quantity, setQuantity] = useState(1)
+  const [quantity, setQuantity] = useState(1);
+  const { toast } = useToast();
+  const [isLoading, setIsLoading] = useState(false);
 
+
+  const handleAddToCart = async () => {
+ 
+    try {
+      setIsLoading(true);
+
+      const result = await addToCart( product.id, quantity);
+
+      if (result.success) {
+        toast({
+          title: "Success",
+          description: "Product added to cart successfully",
+        });
+      } else {
+        throw new Error(result.error);
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to add product to cart",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
   return (
     <div className="container mx-auto px-4 py-6">
       <div className="grid gap-8 md:grid-cols-2">
@@ -28,7 +59,10 @@ export default function ProductDetailPage({ product }) {
           </div>
           <div className="grid grid-cols-4 gap-4">
             {product.images.slice(0, 4).map((image, i) => (
-              <div key={i} className="relative aspect-square overflow-hidden rounded-lg border">
+              <div
+                key={i}
+                className="relative aspect-square overflow-hidden rounded-lg border"
+              >
                 <Image
                   src={image.url || "/placeholder.svg"}
                   alt={`${product.name} view ${i + 1}`}
@@ -49,7 +83,11 @@ export default function ProductDetailPage({ product }) {
                 {[...Array(5)].map((_, i) => (
                   <StarIcon
                     key={i}
-                    className={`h-5 w-5 ${i < 4 ? "fill-primary text-primary" : "fill-muted text-muted-foreground"}`}
+                    className={`h-5 w-5 ${
+                      i < 4
+                        ? "fill-primary text-primary"
+                        : "fill-muted text-muted-foreground"
+                    }`}
                   />
                 ))}
               </div>
@@ -59,7 +97,9 @@ export default function ProductDetailPage({ product }) {
 
           <div className="space-y-4">
             <div className="flex items-center gap-4">
-              <span className="text-2xl font-bold">${product.price.toFixed(2)}</span>
+              <span className="text-2xl font-bold">
+                ${product.price.toFixed(2)}
+              </span>
               <Badge variant="secondary">Limited quantity available</Badge>
             </div>
 
@@ -119,8 +159,13 @@ export default function ProductDetailPage({ product }) {
             </Card>
 
             <div className="space-y-4">
-              <Button className="w-full" size="lg">
-                Add to cart
+              <Button
+                className="w-full"
+                size="lg"
+                onClick={handleAddToCart}
+                disabled={isLoading}
+              >
+                {isLoading ? "Adding to cart..." : "Add to cart"}
               </Button>
               <div className="rounded-lg border p-4">
                 <div className="flex items-center gap-2">
@@ -135,5 +180,5 @@ export default function ProductDetailPage({ product }) {
         </div>
       </div>
     </div>
-  )
+  );
 }

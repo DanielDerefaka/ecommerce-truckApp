@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { Poppins } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster"
 import {
@@ -7,11 +6,7 @@ import {
   
 } from '@clerk/nextjs'
 
-const poppins = Poppins({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800"], // Add the weights you need
-  variable: "--font-poppins", // Optional: for using as a CSS variable
-});
+
 
 export const metadata: Metadata = {
   title: "Truck Sales",
@@ -29,7 +24,7 @@ export default function RootLayout({
   
     <html lang="en">
       <body
-        className={poppins.className}
+     
       >
       
         {children}

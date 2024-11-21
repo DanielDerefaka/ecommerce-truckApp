@@ -2,7 +2,7 @@
 
 import { currentUser } from "@clerk/nextjs/server";
 import { client } from "./prisma";
-import { type User, type Order, type Address } from "@prisma/client";
+import { type User, type Address } from "@prisma/client";
 
 type AuthUserResponse = {
   success: boolean;
@@ -16,6 +16,12 @@ type UserDetailsResponse = {
   error?: string;
 };
 
+
+type CartResponse = {
+  success: boolean;
+  data?: any;
+  error?: string;
+};
 
 
 
@@ -368,5 +374,228 @@ export async function getSimilarProducts(categoryId: string, currentProductId: s
   } catch (error) {
     console.error("Error fetching similar products:", error)
     throw error
+  }
+}
+
+
+
+// Add item to cart
+export async function addToCart(
+
+
+  productId: string,
+  quantity: number
+): Promise<CartResponse> {
+
+  const main = await currentUser();
+
+  if (!main) {
+    console.log('no user found');
+  } else {
+    console.log('User ID:', main.id);  // This will log: user_2ouKHl6e2gtFipmrakrWBJkLeW8
+  }
+
+  const userId = main.id
+
+
+  try {
+    // First, get or create the user's cart
+    const cart = await client.cart.upsert({
+      where: {
+        userId: userId,
+      },
+      create: {
+        userId: userId,
+      },
+      update: {},
+    });
+
+    // Then, add or update the cart item
+    const cartItem = await client.cartItem.upsert({
+      where: {
+        cartId_productId: {
+          cartId: cart.id,
+          productId: productId,
+        },
+      },
+      create: {
+        cartId: cart.id,
+        productId: productId,
+        quantity: quantity,
+      },
+      update: {
+        quantity: {
+          increment: quantity,
+        },
+      },
+    });
+
+    return {
+      success: true,
+      data: cartItem,
+    };
+  } catch (error) {
+    console.error("Error adding to cart:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to add to cart",
+    };
+  }
+}
+
+// Get cart contents
+export async function getCart(): Promise<CartResponse> {
+
+  const main = await currentUser();
+
+  if (!main) {
+    console.log('no user found');
+  } else {
+    console.log('User ID:', main.id);  // This will log: user_2ouKHl6e2gtFipmrakrWBJkLeW8
+  }
+
+  const userId = main.id
+  
+  try {
+    const cart = await client.cart.findUnique({
+      where: {
+        userId: userId,
+      },
+      include: {
+        items: {
+          select: {
+            id: true,
+            quantity: true,
+            productId: true,
+          },
+        },
+      },
+    });
+
+    if (!cart) {
+      return {
+        success: false,
+        error: "Cart not found",
+      };
+    }
+
+    // Get product details for each cart item
+    const cartWithProducts = await Promise.all(
+      cart.items.map(async (item) => {
+        const product = await client.product.findUnique({
+          where: { id: item.productId },
+          select: {
+            id: true,
+            name: true,
+            price: true,
+            images: {
+              select: {
+                url: true,
+              },
+              take: 1,
+            },
+          },
+        });
+        return {
+          ...item,
+          product,
+        };
+      })
+    );
+
+    return {
+      success: true,
+      data: {
+        ...cart,
+        items: cartWithProducts,
+      },
+    };
+  } catch (error) {
+    console.error("Error fetching cart:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to fetch cart",
+    };
+  }
+}
+
+// Update cart item quantity
+export async function updateCartItemQuantity(
+  userId: string,
+  productId: string,
+  quantity: number
+): Promise<CartResponse> {
+  try {
+    const cart = await client.cart.findUnique({
+      where: { userId: userId },
+    });
+
+    if (!cart) {
+      return {
+        success: false,
+        error: "Cart not found",
+      };
+    }
+
+    const updatedItem = await client.cartItem.update({
+      where: {
+        cartId_productId: {
+          cartId: cart.id,
+          productId: productId,
+        },
+      },
+      data: {
+        quantity: quantity,
+      },
+    });
+
+    return {
+      success: true,
+      data: updatedItem,
+    };
+  } catch (error) {
+    console.error("Error updating cart item:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to update cart item",
+    };
+  }
+}
+
+// Remove item from cart
+export async function removeFromCart(
+  userId: string,
+  productId: string
+): Promise<CartResponse> {
+  try {
+    const cart = await client.cart.findUnique({
+      where: { userId: userId },
+    });
+
+    if (!cart) {
+      return {
+        success: false,
+        error: "Cart not found",
+      };
+    }
+
+    await client.cartItem.delete({
+      where: {
+        cartId_productId: {
+          cartId: cart.id,
+          productId: productId,
+        },
+      },
+    });
+
+    return {
+      success: true,
+    };
+  } catch (error) {
+    console.error("Error removing from cart:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to remove from cart",
+    };
   }
 }

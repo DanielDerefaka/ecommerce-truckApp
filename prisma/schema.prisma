@@ -33,7 +33,7 @@ model User {
   phone         String?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
-
+  cart         Cart?
   // Address relation
   addresses     Address[]
 
@@ -85,4 +85,27 @@ model Category {
   id            String    @id @default(cuid())
   name          String    @unique
  
+}
+
+// Add these models to your schema.prisma
+
+model Cart {
+  id        String      @id @default(cuid())
+  userId    String      @unique
+  user      User        @relation(fields: [userId], references: [clerkId])
+  items     CartItem[]
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+}
+
+model CartItem {
+  id        String   @id @default(cuid())
+  cartId    String
+  cart      Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  productId String
+  quantity  Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([cartId, productId])
 }

@@ -11,10 +11,13 @@ import { Search, ShoppingCart, User, MapPin, ChevronDown } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { currentUser } from "@clerk/nextjs/server";
-import { UserButton, UserProfile } from "@clerk/nextjs";
+import { UserButton } from "@clerk/nextjs";
+import CartButton from "./Cart";
 
 const Navbar: React.FC = async () => {
   const user = await currentUser();
+ 
+
   return (
     <Menubar className="rounded-none bg-white border-b border-gray-100 py-8 sticky top-0 z-50 shadow-sm">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center">
@@ -97,17 +100,7 @@ const Navbar: React.FC = async () => {
           </MenubarMenu>
 
           {/* Cart */}
-          <Link href="/cart">
-          <Button
-            variant="ghost"
-            className="relative flex items-center space-x-2 text-gray-700 hover:text-gray-900"
-          >
-            <ShoppingCart size={18} />
-            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-4 h-4 rounded-full flex items-center justify-center">
-              2
-            </span>
-          </Button>
-          </Link>
+          <CartButton />
         
 
           {user ? (
