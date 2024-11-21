@@ -17,6 +17,8 @@ type UserDetailsResponse = {
 };
 
 
+
+
 export const getAuthUserDetails = async (): Promise<AuthUserResponse> => {
   try {
     const user = await currentUser();
@@ -172,56 +174,8 @@ export async function getUserDetails(userId: string): Promise<UserDetailsRespons
         addresses: {
          
         },
-        orders: {
-          orderBy: {
-            createdAt: 'desc',
-          },
-          include: {
-            items: {
-              include: {
-                product: {
-                  select: {
-                    name: true,
-                    images: true,
-                  },
-                },
-              },
-            },
-          },
-        },
-        cart: {
-          include: {
-            items: {
-              include: {
-                product: {
-                  select: {
-                    id: true,
-                    name: true,
-                    price: true,
-                    images: true,
-                  },
-                },
-              },
-            },
-          },
-        },
-        wishlist: {
-          include: {
-            items: {
-              include: {
-                product: {
-                  select: {
-                    id: true,
-                    name: true,
-                    price: true,
-                    images: true,
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
+      }
+       
     });
 
     if (!userDetails) {
@@ -247,148 +201,172 @@ export async function getUserDetails(userId: string): Promise<UserDetailsRespons
   }
 }
 
-// Get user's order history
-export async function getUserOrders(userId: string) {
+export async function getProducts() {
   try {
-    const orders = await client.order.findMany({
-      where: {
-        userId: userId,
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-      include: {
-        items: {
-          include: {
-            product: {
-              select: {
-                name: true,
-                price: true,
-                images: true,
-              },
-            },
-          },
+    const products = await client.product.findMany({
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        price: true,
+        stock: true,
+        categoryId: true,
+        miles: true,
+        loction: true,
+        images: {
+          select: {
+            id: true,
+            url: true
+          }
         },
-        tracking: true,
-      },
+        
+      }
     });
-
-    return {
-      success: true,
-      data: orders,
-    };
-
+    
+    return { success: true, data: products };
   } catch (error) {
-    console.error("Error fetching user orders:", error);
+    console.error("Error fetching products:", error);
     return {
       success: false,
-      data: null,
-      error: error instanceof Error ? error.message : "Failed to fetch orders",
+      error: "Failed to fetch products",
+      details: error instanceof Error ? error.message : "Unknown error occurred"
     };
   }
 }
 
-// Get user's addresses
-export async function getUserAddresses(userId: string) {
+
+// export async function getProductsbyId(id: string) {
+//   try {
+//     const products = await client.product.findUnique({
+//       select: {
+//         id: true,
+//         name: true,
+//         description: true,
+//         price: true,
+//         stock: true,
+//         categoryId: true,
+//         miles: true,
+//         loction: true,
+//         images: {
+//           select: {
+//             id: true,
+//             url: true
+//           }
+//         },
+//       },
+//       where: {
+//         id: id
+//       }
+//     });
+    
+//     return { success: true, data: products };
+//   } catch (error) {
+//     console.error("Error fetching products:", error);
+//     return {
+//       success: false,
+//       error: "Failed to fetch products",
+//       details: error instanceof Error ? error.message : "Unknown error occurred"
+//     };
+//   }
+// }
+
+
+// export async function getProductsbyId(id: string) {
+//   try {
+//     const product = await client.product.findUnique({
+//       where: {
+//         id: id, // Ensure `id` is passed correctly as a string
+//       },
+//       select: {
+//         id: true,
+//         name: true,
+//         description: true,
+//         price: true,
+//         stock: true,
+//         categoryId: true,
+//         miles: true,
+//         loction: true,
+//         images: {
+//           select: {
+//             id: true,
+//             url: true,
+//           },
+//         },
+//       },
+//     });
+
+//     if (!product) {
+//       return { success: false, error: "Product not found" };
+//     }
+
+//     return { success: true, data: product };
+//   } catch (error) {
+//     console.error("Error fetching product:", error);
+//     return {
+//       success: false,
+//       error: "Failed to fetch product",
+//       details: error instanceof Error ? error.message : "Unknown error occurred",
+//     };
+//   }
+// }
+
+export async function getProductsbyId(productid: string) {
+  console.log(productid)
   try {
-    const addresses = await client.address.findMany({
+    const product = await client.product.findUnique({
       where: {
-        userId: userId,
+        id: productid, 
       },
-      orderBy: {
-        isDefault: 'desc',
-      },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        price: true,
+        stock: true,
+        categoryId: true,
+        miles: true,
+        loction: true, // Note: I corrected 'loction' to 'location'
+        images: {
+          select: {
+            id: true,
+            url: true
+          }
+        }
+      }
     });
-
-    return {
-      success: true,
-      data: addresses,
-    };
-
+    
+    return product;
   } catch (error) {
-    console.error("Error fetching user addresses:", error);
-    return {
-      success: false,
-      data: null,
-      error: error instanceof Error ? error.message : "Failed to fetch addresses",
-    };
+    console.error("Error fetching product:", error);
+    throw error;
   }
 }
 
-// Get user's cart with products
-export async function getUserCart(userId: string) {
+
+export async function getSimilarProducts(categoryId: string, currentProductId: string) {
   try {
-    const cart = await client.cart.findUnique({
+    const similarProducts = await client.product.findMany({
       where: {
-        userId: userId,
+        categoryId: categoryId,
+        id: { not: currentProductId }
       },
-      include: {
-        items: {
-          include: {
-            product: {
-              select: {
-                id: true,
-                name: true,
-                price: true,
-                images: true,
-                stock: true,
-              },
-            },
+      take: 4,
+      select: {
+        id: true,
+        name: true,
+        price: true,
+        images: {
+          select: {
+            url: true
           },
-        },
-      },
-    });
-
-    return {
-      success: true,
-      data: cart,
-    };
-
+          take: 1
+        }
+      }
+    })
+    
+    return similarProducts
   } catch (error) {
-    console.error("Error fetching user cart:", error);
-    return {
-      success: false,
-      data: null,
-      error: error instanceof Error ? error.message : "Failed to fetch cart",
-    };
-  }
-}
-
-// Get user's wishlist with products
-export async function getUserWishlist(userId: string) {
-  try {
-    const wishlist = await client.wishlist.findUnique({
-      where: {
-        userId: userId,
-      },
-      include: {
-        items: {
-          include: {
-            product: {
-              select: {
-                id: true,
-                name: true,
-                price: true,
-                images: true,
-                stock: true,
-              },
-            },
-          },
-        },
-      },
-    });
-
-    return {
-      success: true,
-      data: wishlist,
-    };
-
-  } catch (error) {
-    console.error("Error fetching user wishlist:", error);
-    return {
-      success: false,
-      data: null,
-      error: error instanceof Error ? error.message : "Failed to fetch wishlist",
-    };
+    console.error("Error fetching similar products:", error)
+    throw error
   }
 }

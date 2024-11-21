@@ -1,8 +1,22 @@
 "use client"
 
-import { Bell, ChevronDown, Home, LineChart, LogOut, Menu, MessageCircle, Search, Settings, ShoppingBag, User2, X } from 'lucide-react'
+import { 
+  Bell, 
+  ChevronDown, 
+  Home, 
+  LineChart, 
+  LogOut, 
+  Menu, 
+  Settings, 
+  ShoppingBag, 
+  User2, 
+  X,
+  HelpCircle,
+  BarChart3
+} from 'lucide-react'
 import Link from "next/link"
 import { useState, useEffect } from "react"
+import { usePathname } from 'next/navigation'
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -14,97 +28,120 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Input } from "@/components/ui/input"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+
+const navigationItems = [
+  { href: '/admin', icon: Home, label: 'Home' },
+  { href: '/admin/analysis', icon: LineChart, label: 'Analysis' },
+  { href: '/admin/add-product', icon: ShoppingBag, label: 'Add Product' },
+  { href: '/admin/manage-users', icon: User2, label: 'Manage Users' },
+  { href: '/admin/reports', icon: BarChart3, label: 'Reports' }
+]
+
+const toolItems = [
+  { href: '/admin/settings', icon: Settings, label: 'Settings' },
+  { href: '/admin/help', icon: HelpCircle, label: 'Help Center' }
+]
 
 export function Sidebar() {
   const [isMobile, setIsMobile] = useState(false)
   const [isOpen, setIsOpen] = useState(false)
+  const [isCollapsed, setIsCollapsed] = useState(false)
+  const pathname = usePathname()
 
   useEffect(() => {
     const checkIsMobile = () => {
       setIsMobile(window.innerWidth < 768)
+      if (window.innerWidth < 768) {
+        setIsCollapsed(false)
+      }
     }
     checkIsMobile()
     window.addEventListener('resize', checkIsMobile)
     return () => window.removeEventListener('resize', checkIsMobile)
   }, [])
 
+  const NavItem = ({ href, icon: Icon, label }) => {
+    const isActive = pathname === href
+    
+    return (
+      <TooltipProvider delayDuration={0}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Link
+              href={href}
+              className={`flex items-center gap-3 rounded-lg px-3 py-2 transition-colors
+                ${isActive 
+                  ? 'bg-gray-800 text-gray-100' 
+                  : 'text-gray-400 hover:bg-gray-800 hover:text-gray-100'}
+                ${isCollapsed ? 'justify-center' : ''}`}
+              onClick={() => setIsOpen(false)}
+            >
+              <Icon className="h-5 w-5 shrink-0" />
+              {!isCollapsed && <span className="truncate">{label}</span>}
+            </Link>
+          </TooltipTrigger>
+          {isCollapsed && (
+            <TooltipContent side="right" className="flex items-center gap-4">
+              {label}
+            </TooltipContent>
+          )}
+        </Tooltip>
+      </TooltipProvider>
+    )
+  }
+
   const SidebarContent = () => (
-    <div className="flex h-full w-64 flex-col bg-black text-gray-100">
-      <div className="flex items-center gap-2 px-6 py-4">
-        <div className="rounded-full bg-blue-500 p-1">
-          <svg
-            className="h-6 w-6 text-white"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
-          </svg>
-        </div>
-        <span className="text-xl font-bold">Xenith</span>
+    <div className={`flex h-full flex-col bg-black text-gray-100 transition-all duration-300
+      ${isCollapsed ? 'w-16' : 'w-64'}`}>
+      <div className={`flex items-center px-6 py-4 ${isCollapsed ? 'justify-center px-2' : 'gap-2'}`}>
+        
+        {!isCollapsed && <span className="text-xl font-bold">TruckX</span>}
       </div>
+      
       <div className="flex-1 space-y-1 px-3 py-4">
-        <Link
-          className="flex items-center gap-3 rounded-lg bg-gray-800 px-3 py-2 text-gray-100 transition-colors hover:bg-gray-700"
-          href="/"
-          onClick={() => setIsOpen(false)}
-        >
-          <Home className="h-5 w-5" />
-          Home
-        </Link>
-        <Link 
-          className="flex items-center gap-3 rounded-lg px-3 py-2 text-gray-400 transition-colors hover:bg-gray-800 hover:text-gray-100" 
-          href="/analysis"
-          onClick={() => setIsOpen(false)}
-        >
-          <LineChart className="h-5 w-5" />
-          Analysis
-        </Link>
-        <Link 
-          className="flex items-center gap-3 rounded-lg px-3 py-2 text-gray-400 transition-colors hover:bg-gray-800 hover:text-gray-100" 
-          href="/add-product"
-          onClick={() => setIsOpen(false)}
-        >
-          <ShoppingBag className="h-5 w-5" />
-          Add Product
-        </Link>
-        <Link 
-          className="flex items-center gap-3 rounded-lg px-3 py-2 text-gray-400 transition-colors hover:bg-gray-800 hover:text-gray-100" 
-          href="/manage-users"
-          onClick={() => setIsOpen(false)}
-        >
-          <User2 className="h-5 w-5" />
-          Manage Users
-        </Link>
+        {navigationItems.map((item) => (
+          <NavItem key={item.href} {...item} />
+        ))}
       </div>
+
       <div className="px-3 py-4">
-        <h2 className="mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-gray-400">Tools</h2>
+        {!isCollapsed && (
+          <h2 className="mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-gray-400">
+            Tools
+          </h2>
+        )}
         <div className="space-y-1">
-          <Link 
-            className="flex items-center gap-3 rounded-lg px-3 py-2 text-gray-400 transition-colors hover:bg-gray-800 hover:text-gray-100" 
-            href="#"
-            onClick={() => setIsOpen(false)}
-          >
-            <Settings className="h-5 w-5" />
-            Settings
-          </Link>
+          {toolItems.map((item) => (
+            <NavItem key={item.href} {...item} />
+          ))}
         </div>
       </div>
+
       <div className="border-t border-gray-800 px-3 py-4">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button className="w-full justify-start gap-2 bg-gray-800 text-left hover:bg-gray-700" variant="ghost">
+            <Button 
+              className={`w-full justify-start gap-2 bg-gray-800 text-left hover:bg-gray-700
+                ${isCollapsed ? 'px-2' : ''}`} 
+              variant="ghost"
+            >
               <Avatar className="h-8 w-8">
                 <AvatarImage alt="User" src="/placeholder.svg" />
                 <AvatarFallback>ZD</AvatarFallback>
               </Avatar>
-              <div className="flex flex-1 items-center justify-between">
-                <span>Zac</span>
-                <ChevronDown className="h-4 w-4" />
-              </div>
+              {!isCollapsed && (
+                <div className="flex flex-1 items-center justify-between">
+                  <span>Zac</span>
+                  <ChevronDown className="h-4 w-4" />
+                </div>
+              )}
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
@@ -119,42 +156,54 @@ export function Sidebar() {
               <span>Settings</span>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>
+            <DropdownMenuItem className="text-red-600">
               <LogOut className="mr-2 h-4 w-4" />
               <span>Log out</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+
+      {!isMobile && (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute bottom-4 right-[-20px] hidden rounded-full bg-gray-800 md:flex"
+                onClick={() => setIsCollapsed(!isCollapsed)}
+              >
+                <ChevronDown className={`h-4 w-4 transition-transform ${isCollapsed ? 'rotate-90' : '-rotate-90'}`} />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="right">
+              {isCollapsed ? 'Expand' : 'Collapse'} sidebar
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      )}
     </div>
   )
 
   return (
     <>
-      {isMobile ? (
+      {isMobile && (
         <Sheet open={isOpen} onOpenChange={setIsOpen}>
           <SheetTrigger asChild>
             <Button variant="ghost" size="icon" className="md:hidden">
               <Menu className="h-6 w-6" />
-              <span className="sr-only">Toggle sidebar</span>
             </Button>
           </SheetTrigger>
-          <SheetContent side="left" className="p-0">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="absolute right-4 top-4 md:hidden"
-              onClick={() => setIsOpen(false)}
-            >
-              <X className="h-6 w-6" />
-              <span className="sr-only">Close sidebar</span>
-            </Button>
+          <SheetContent side="left" className="w-full max-w-[300px] p-0">
             <SidebarContent />
           </SheetContent>
         </Sheet>
-      ) : (
-        <SidebarContent />
       )}
+      
+      {!isMobile && <SidebarContent />}
     </>
   )
 }
+
+export default Sidebar

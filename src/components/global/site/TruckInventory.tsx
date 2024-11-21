@@ -1,7 +1,7 @@
 
 'use client'
 
-import { useState } from 'react'
+import { useState,useEffect } from 'react'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Slider } from "@/components/ui/slider"
@@ -16,6 +16,9 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { MapPin, Grid, List, ArrowUpDown, X } from 'lucide-react'
+import { getProducts } from '@/lib/queries'
+import Image from 'next/image'
+import Link from 'next/link'
 
 const truckTypes = [
   "C & C",
@@ -33,6 +36,26 @@ export default function TruckInventory() {
   const [activeFilters, setActiveFilters] = useState(8)
   const [priceRange, setPriceRange] = useState([2000, 200000])
   const [mileageRange, setMileageRange] = useState([0, 2000000])
+
+  const [products, setProducts] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchProducts() {
+      try {
+        const response = await getProducts();
+        if (response.success) {
+          setProducts(response.data);
+        }
+        setIsLoading(false);
+      } catch (error) {
+        console.error('Failed to fetch products', error);
+        setIsLoading(false);
+      }
+    }
+
+    fetchProducts();
+  }, []);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -158,36 +181,45 @@ export default function TruckInventory() {
               </div>
 
               <div className={`grid gap-6 ${viewMode === 'grid' ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'}`}>
-                {[1, 2, 3, 4, 5, 6].map((item) => (
-                  <Card key={item} className="overflow-hidden">
+              {products.map((product, index) => (
+                <Link href={`/explore/${product.id}?id=${product.id}`} key={product.id
+                }  className='cursor-pointer'>
+                  <Card className="overflow-hidden">
                     <div className="relative">
-                      <img
-                        src="/placeholder.svg?height=300&width=400"
-                        alt="Truck"
+                    {product.images && product.images.length > 0 && (
+                      <Image
+                        src={product.images[0].url} 
+                        alt={product.name}
                         className="w-full h-48 object-cover"
+                        width={500}
+                        height={500}
                       />
+                    )}
+
+                    <p>{product.images.url}</p>
                       <Badge className="absolute top-2 right-2 bg-red-600">
                         PROMOTION
                       </Badge>
                     </div>
                     <CardContent className="p-4">
                       <div className="space-y-2">
-                        <h3 className="font-semibold">2023 Freightliner Cascadia</h3>
-                        <div className="text-2xl font-bold text-primary">$99,999</div>
+                        <h3 className="font-semibold">{product.name}</h3>
+                        <div className="text-2xl font-bold text-primary">${product.price}</div>
                         <div className="flex items-center text-muted-foreground">
                           <ArrowUpDown className="h-4 w-4 mr-1" />
-                          282,476 Miles
+                         {product.miles} Miles
                         </div>
                         <div className="flex items-center text-muted-foreground">
                           <MapPin className="h-4 w-4 mr-1" />
-                          French Camp, CA
+                          {product.loction}
                         </div>
                         <div className="text-sm text-muted-foreground">
-                          Stock # 267370
+                          Stock # {product.stock}
                         </div>
                       </div>
                     </CardContent>
                   </Card>
+                  </Link>
                 ))}
               </div>
             </div>

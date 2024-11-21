@@ -36,14 +36,7 @@ model User {
 
   // Address relation
   addresses     Address[]
-  // Orders relation
-  orders        Order[]
-  // Wishlist relation
-  wishlist      Wishlist?
-  // Reviews relation
-  reviews       Review[]
-  // Cart relation
-  cart          Cart?
+
 }
 
 model Address {
@@ -60,151 +53,36 @@ model Address {
   user          User      @relation(fields: [userId], references: [id])
 }
 
+
+
 model Product {
   id            String    @id @default(cuid())
-  name          String
-  description   String
-  price         Decimal
-  stock         Int
-  images        String[]
-  specifications Json
+  name          String?
+  description   String?
+  price         Int?
+  stock         Int?
+  loction       String
+  miles         String
+  images        Image[]
+
+    // Category relation
+  categoryId    String
+
+  
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+}
 
-  // Category relation
-  categoryId    String
-  category      Category  @relation(fields: [categoryId], references: [id])
-  
-  // OrderItem relation
-  orderItems    OrderItem[]
-  // CartItem relation
-  cartItems     CartItem[]
-  // WishlistItem relation
-  wishlistItems WishlistItem[]
-  // Review relation
-  reviews       Review[]
+
+model Image {
+  id         String   @id @default(cuid())
+  url        String
+  productId  String
+  product    Product  @relation(fields: [productId], references: [id] , onDelete: Cascade)
 }
 
 model Category {
   id            String    @id @default(cuid())
   name          String    @unique
-  description   String?
-  
-  // Product relation
-  products      Product[]
-}
-
-model Cart {
-  id            String    @id @default(cuid())
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-
-  // User relation
-  userId        String    @unique
-  user          User      @relation(fields: [userId], references: [id])
-  
-  // CartItem relation
-  items         CartItem[]
-}
-
-model CartItem {
-  id            String    @id @default(cuid())
-  quantity      Int
-  
-  // Cart relation
-  cartId        String
-  cart          Cart      @relation(fields: [cartId], references: [id])
-  
-  // Product relation
-  productId     String
-  product       Product   @relation(fields: [productId], references: [id])
-
-  @@unique([cartId, productId])
-}
-
-model Wishlist {
-  id            String    @id @default(cuid())
-  createdAt     DateTime  @default(now())
-  
-  // User relation
-  userId        String    @unique
-  user          User      @relation(fields: [userId], references: [id])
-  
-  // WishlistItem relation
-  items         WishlistItem[]
-}
-
-model WishlistItem {
-  id            String    @id @default(cuid())
-  addedAt       DateTime  @default(now())
-  
-  // Wishlist relation
-  wishlistId    String
-  wishlist      Wishlist  @relation(fields: [wishlistId], references: [id])
-  
-  // Product relation
-  productId     String
-  product       Product   @relation(fields: [productId], references: [id])
-
-  @@unique([wishlistId, productId])
-}
-
-model Order {
-  id            String      @id @default(cuid())
-  orderNumber   String      @unique
-  status        OrderStatus @default(PENDING)
-  totalAmount   Decimal
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
-
-  // User relation
-  userId        String
-  user          User        @relation(fields: [userId], references: [id])
-  
-  // OrderItem relation
-  items         OrderItem[]
-  // Tracking relation
-  tracking      Tracking?
-}
-
-model OrderItem {
-  id            String    @id @default(cuid())
-  quantity      Int
-  price         Decimal
-  
-  // Order relation
-  orderId       String
-  order         Order     @relation(fields: [orderId], references: [id])
-  
-  // Product relation
-  productId     String
-  product       Product   @relation(fields: [productId], references: [id])
-}
-
-model Review {
-  id            String    @id @default(cuid())
-  rating        Int
-  comment       String?
-  createdAt     DateTime  @default(now())
-  
-  // User relation
-  userId        String
-  user          User      @relation(fields: [userId], references: [id])
-  
-  // Product relation
-  productId     String
-  product       Product   @relation(fields: [productId], references: [id])
-
-  @@unique([userId, productId])
-}
-
-model Tracking {
-  id            String    @id @default(cuid())
-  currentLocation Json
-  status        String
-  updatedAt     DateTime  @updatedAt
-  
-  // Order relation
-  orderId       String    @unique
-  order         Order     @relation(fields: [orderId], references: [id])
+ 
 }

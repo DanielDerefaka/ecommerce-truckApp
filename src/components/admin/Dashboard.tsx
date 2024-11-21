@@ -1,5 +1,7 @@
-import { ArrowDown, ArrowUp, Bell, Search } from 'lucide-react'
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+"use client"
+import { useState, useEffect } from 'react'
+import { Bell, Search } from 'lucide-react'
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -11,6 +13,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { UserButton } from '@clerk/nextjs'
+import { getProducts } from '@/lib/queries'
 
 const topCountries = [
   { name: "Australia", flag: "🇦🇺", value: "34.48K" },
@@ -18,18 +22,34 @@ const topCountries = [
   { name: "Canada", flag: "🇨🇦", value: "25.12K" }
 ]
 
-const products = [
-  { id: "01", name: "Denim Jacket", category: "Men's Tops", stock: "In Stock", sales: "1.43k", image: "/placeholder.svg" },
-  { id: "02", name: "Nike Air Max 97", category: "Men's Shoes", stock: "Out of Stock", sales: "2.68k", image: "/placeholder.svg" },
-  { id: "03", name: "Jordan Air", category: "Men's T-Shirt", stock: "In Stock", sales: "1.45k", image: "/placeholder.svg" }
-]
+export default function DashboardPage({ user }:any) {
+  const [products, setProducts] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-export default function DashboardPage() {
+  useEffect(() => {
+    async function fetchProducts() {
+      try {
+        const response = await getProducts();
+        if (response.success) {
+          setProducts(response.data);
+        }
+        setIsLoading(false);
+      } catch (error) {
+        console.error('Failed to fetch products', error);
+        setIsLoading(false);
+      }
+    }
+
+    fetchProducts();
+  }, []);
+
+  if (isLoading) return <div>Loading...</div>;
+
   return (
     <div className="p-6">
       <header className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold">Welcome Back, Zac!</h1>
+          <h1 className="text-2xl font-bold">Welcome Back, {user.firstName}</h1>
           <p className="text-sm text-gray-500">Here's what happening with your store today</p>
         </div>
         <div className="flex items-center gap-4">
@@ -41,18 +61,20 @@ export default function DashboardPage() {
             <Bell className="h-5 w-5" />
           </Button>
           <Avatar>
-            <AvatarImage alt="User" src="/placeholder.svg" />
-            <AvatarFallback>ZD</AvatarFallback>
+            <AvatarFallback>
+              <UserButton/>
+            </AvatarFallback>
           </Avatar>
         </div>
       </header>
+      
       <div className="grid gap-6 md:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Customer</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">307.48K</div>
+            <div className="text-2xl font-bold">1.8K</div>
             <p className="text-xs text-muted-foreground">
               <span className="text-green-500">+30% </span>
               this month
@@ -84,6 +106,7 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+      
       <div className="mt-6 grid gap-6 md:grid-cols-2">
         <Card>
           <CardHeader>
@@ -110,6 +133,7 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+      
       <Card className="mt-6">
         <CardHeader>
           <CardTitle>Top selling products</CardTitle>
@@ -120,34 +144,42 @@ export default function DashboardPage() {
               <TableRow>
                 <TableHead>S/NO</TableHead>
                 <TableHead>Product Name</TableHead>
-                <TableHead>Category</TableHead>
+                <TableHead>Description</TableHead>
+                <TableHead>Price</TableHead>
                 <TableHead>Stock</TableHead>
-                <TableHead>Total sales</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {products.map((product) => (
+              {products.map((product, index) => (
                 <TableRow key={product.id}>
-                  <TableCell>{product.id}</TableCell>
+                  <TableCell>{index + 1}</TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
-                      <div className="h-8 w-8 rounded-lg bg-gray-100" />
+                      {product.images && product.images.length > 0 ? (
+                        <img
+                          src={product.images[0].url} 
+                          alt={product.name} 
+                          className="h-8 w-8 rounded-lg object-cover"
+                        />
+                      ) : (
+                        <div className="h-8 w-8 rounded-lg bg-gray-100" />
+                      )}
                       {product.name}
                     </div>
                   </TableCell>
-                  <TableCell>{product.category}</TableCell>
+                  <TableCell>{product.description}</TableCell>
+                  <TableCell>${product.price}</TableCell>
                   <TableCell>
                     <span
                       className={`inline-flex rounded-full px-2 py-1 text-xs ${
-                        product.stock === "In Stock"
+                        (product.stock || 0) > 0
                           ? "bg-green-100 text-green-700"
                           : "bg-red-100 text-red-700"
                       }`}
                     >
-                      {product.stock}
+                      {product.stock} Items
                     </span>
                   </TableCell>
-                  <TableCell>{product.sales}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
