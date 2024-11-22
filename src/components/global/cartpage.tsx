@@ -1,43 +1,60 @@
-'use client'
+"use client";
 
-import { useState, useEffect } from 'react'
-import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
-import { MapPin, Plus, Minus } from 'lucide-react'
-import { getCart, updateCartItemQuantity, removeFromCart } from '@/lib/queries'
-import Image from 'next/image'
+import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { MapPin, Plus, Minus } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { getCart, updateCartItemQuantity, removeFromCart } from "@/lib/queries";
+import Image from "next/image";
+import { AddressModal } from "./site/AddressModal";
+import Loading from "./Loading";
+
+
 
 // Types remain the same
 interface Product {
-  id: string
-  name: string
-  price: number
-  images: { url: string }[]
+  id: string;
+  name: string;
+  price: number;
+  images: { url: string }[];
 }
 
 interface CartItem {
-  id: string
-  productId: string
-  quantity: number
-  product: Product
+  id: string;
+  productId: string;
+  quantity: number;
+  product: Product;
 }
 
 interface CartData {
-  userId: string
-  items: CartItem[]
+  userId: string;
+  items: CartItem[];
 }
 
 interface CartResponse {
-  success: boolean
-  data?: CartData
-  error?: string
+  success: boolean;
+  data?: CartData;
+  error?: string;
 }
 
 const LoadingState = () => (
   <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-    <div className="animate-pulse">Loading cart...</div>
+    <div className="animate-pulse">
+      <Loading/>
+    </div>
   </div>
-)
+);
 
 const ErrorState = ({ message }: { message: string }) => (
   <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -45,20 +62,20 @@ const ErrorState = ({ message }: { message: string }) => (
       <span>Error:</span> {message}
     </div>
   </div>
-)
+);
 
 const CartItem = ({
   item,
   onUpdateQuantity,
   onRemove,
-  isUpdating
+  isUpdating,
 }: {
-  item: CartItem
-  onUpdateQuantity: (productId: string, quantity: number) => void
-  onRemove: (productId: string) => void
-  isUpdating: boolean
+  item: CartItem;
+  onUpdateQuantity: (productId: string, quantity: number) => void;
+  onRemove: (productId: string) => void;
+  isUpdating: boolean;
 }) => (
-  <div className={`flex gap-4 ${isUpdating ? 'opacity-60' : ''}`}>
+  <div className={`flex gap-4 ${isUpdating ? "opacity-60" : ""}`}>
     <Image
       src={item.product.images[0]?.url || "/placeholder.svg"}
       alt={item.product.name}
@@ -95,8 +112,8 @@ const CartItem = ({
         </div>
       </div>
       <div className="mt-2 flex justify-between items-center">
-        <Button 
-          variant="ghost" 
+        <Button
+          variant="ghost"
           size="sm"
           onClick={() => onRemove(item.productId)}
           disabled={isUpdating}
@@ -110,14 +127,14 @@ const CartItem = ({
       </div>
     </div>
   </div>
-)
+);
 
 const OrderSummary = ({
   items,
-  subtotal
+  subtotal,
 }: {
-  items: CartItem[]
-  subtotal: number
+  items: CartItem[];
+  subtotal: number;
 }) => (
   <Card className="p-6">
     <div className="space-y-4">
@@ -145,121 +162,130 @@ const OrderSummary = ({
       </div>
     </div>
   </Card>
-)
+);
 
 export default function CartPage() {
-  const [cartData, setCartData] = useState<CartData | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [updatingItems, setUpdatingItems] = useState<Set<string>>(new Set())
+  const [open, setOpen] = useState(false);
+
+  const [cartData, setCartData] = useState<CartData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [updatingItems, setUpdatingItems] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    loadCartData()
-  }, [])
+    loadCartData();
+  }, []);
 
   const loadCartData = async () => {
     try {
-      setLoading(true)
-      const response: CartResponse = await getCart()
+      setLoading(true);
+      const response: CartResponse = await getCart();
       if (response.success && response.data) {
-        setCartData(response.data)
-        setError(null)
+        setCartData(response.data);
+        setError(null);
       } else {
-        setError(response.error || 'Failed to load cart')
+        setError(response.error || "Failed to load cart");
       }
     } catch (err) {
-      setError('Failed to load cart')
+      setError("Failed to load cart");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
-  const handleQuantityUpdate = async (productId: string, newQuantity: number) => {
-    if (!cartData?.userId || newQuantity < 1) return
+  const handleQuantityUpdate = async (
+    productId: string,
+    newQuantity: number
+  ) => {
+    if (!cartData?.userId || newQuantity < 1) return;
 
     // Optimistically update the UI
-    setUpdatingItems(prev => new Set(prev).add(productId))
-    setCartData(prev => {
-      if (!prev) return null
+    setUpdatingItems((prev) => new Set(prev).add(productId));
+    setCartData((prev) => {
+      if (!prev) return null;
       return {
         ...prev,
-        items: prev.items.map(item =>
+        items: prev.items.map((item) =>
           item.productId === productId
             ? { ...item, quantity: newQuantity }
             : item
-        )
-      }
-    })
+        ),
+      };
+    });
 
     try {
-      const response = await updateCartItemQuantity(cartData.userId, productId, newQuantity)
+      const response = await updateCartItemQuantity(
+        cartData.userId,
+        productId,
+        newQuantity
+      );
       if (!response.success) {
         // Revert on failure
-        await loadCartData()
-        setError(response.error || 'Failed to update quantity')
+        await loadCartData();
+        setError(response.error || "Failed to update quantity");
       }
     } catch (err) {
-      await loadCartData()
-      setError('Failed to update quantity')
+      await loadCartData();
+      setError("Failed to update quantity");
     } finally {
-      setUpdatingItems(prev => {
-        const next = new Set(prev)
-        next.delete(productId)
-        return next
-      })
+      setUpdatingItems((prev) => {
+        const next = new Set(prev);
+        next.delete(productId);
+        return next;
+      });
     }
-  }
+  };
 
   const handleRemoveItem = async (productId: string) => {
-    if (!cartData?.userId) return
+    if (!cartData?.userId) return;
 
     // Optimistically update the UI
-    setUpdatingItems(prev => new Set(prev).add(productId))
-    setCartData(prev => {
-      if (!prev) return null
+    setUpdatingItems((prev) => new Set(prev).add(productId));
+    setCartData((prev) => {
+      if (!prev) return null;
       return {
         ...prev,
-        items: prev.items.filter(item => item.productId !== productId)
-      }
-    })
+        items: prev.items.filter((item) => item.productId !== productId),
+      };
+    });
 
     try {
-      const response = await removeFromCart(cartData.userId, productId)
+      const response = await removeFromCart(cartData.userId, productId);
       if (!response.success) {
         // Revert on failure
-        await loadCartData()
-        setError(response.error || 'Failed to remove item')
+        await loadCartData();
+        setError(response.error || "Failed to remove item");
       }
     } catch (err) {
-      await loadCartData()
-      setError('Failed to remove item')
+      await loadCartData();
+      setError("Failed to remove item");
     } finally {
-      setUpdatingItems(prev => {
-        const next = new Set(prev)
-        next.delete(productId)
-        return next
-      })
+      setUpdatingItems((prev) => {
+        const next = new Set(prev);
+        next.delete(productId);
+        return next;
+      });
     }
-  }
+  };
 
   const calculateSubtotal = () => {
-    if (!cartData?.items) return 0
+    if (!cartData?.items) return 0;
     return cartData.items.reduce((total, item) => {
-      return total + (item.product.price * item.quantity)
-    }, 0)
-  }
+      return total + item.product.price * item.quantity;
+    }, 0);
+  };
 
-  if (loading) return <LoadingState />
-  if (error) return <ErrorState message={error} />
-  if (!cartData) return <ErrorState message="No cart data available" />
+  if (loading) return <LoadingState />;
+  if (error) return <ErrorState message={error} />;
+  if (!cartData) return <ErrorState message="No cart data available" />;
 
-  const subtotal = calculateSubtotal()
+  const subtotal = calculateSubtotal();
 
   return (
     <div className="min-h-screen bg-gray-50">
       <main className="max-w-7xl mx-auto px-4 py-8">
         <h1 className="text-2xl font-semibold mb-8">Checkout</h1>
-        
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Left Column */}
           <div className="space-y-6">
@@ -270,29 +296,39 @@ export default function CartPage() {
                   <MapPin className="h-8 w-8 text-muted-foreground" />
                   <div>
                     <h2 className="font-semibold">No address saved</h2>
-                    <p className="text-sm text-muted-foreground">
-                      Add an address so we can get tracking on the delivery!
-                    </p>
                   </div>
                 </div>
               </div>
-              <Button variant="outline" className="w-full">
-                Add new locations
-              </Button>
+
+              <Dialog open={open} onOpenChange={setOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" className="w-full">
+                    Add new locations
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[425px]">
+                  <AddressModal open={open} setOpen={setOpen} />
+                </DialogContent>
+              </Dialog>
             </Card>
 
             {/* Cart Items */}
             <Card className="p-6">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="font-semibold">
-                  Cart <span className="text-muted-foreground">
+                  Cart{" "}
+                  <span className="text-muted-foreground">
                     {cartData.items.length} items
                   </span>
                 </h2>
-                <Button 
-                  variant="link" 
+                <Button
+                  variant="link"
                   className="text-destructive"
-                  onClick={() => cartData.items.forEach(item => handleRemoveItem(item.productId))}
+                  onClick={() =>
+                    cartData.items.forEach((item) =>
+                      handleRemoveItem(item.productId)
+                    )
+                  }
                 >
                   Remove all
                 </Button>
@@ -318,5 +354,5 @@ export default function CartPage() {
         </div>
       </main>
     </div>
-  )
+  );
 }

@@ -23,6 +23,15 @@ type CartResponse = {
   error?: string;
 };
 
+interface AddressData {
+  id?: string; // Optional
+  street: string;
+  city: string;
+  state: string;
+  postalCode: string;
+  country: string;
+  isDefault?: boolean; // Optional
+}
 
 
 export const getAuthUserDetails = async (): Promise<AuthUserResponse> => {
@@ -455,7 +464,9 @@ export async function getCart(): Promise<CartResponse> {
   }
 
   const userId = main.id
-  
+
+  if(!userId) return null
+
   try {
     const cart = await client.cart.findUnique({
       where: {
@@ -596,6 +607,125 @@ export async function removeFromCart(
     return {
       success: false,
       error: error instanceof Error ? error.message : "Failed to remove from cart",
+    };
+  }
+}
+
+
+
+
+// export async function addAddress(data: AddressData) {
+//   try {
+//     const user = await currentUser();
+    
+//     if (!user) {
+//       return {
+//         success: false,
+//         error: 'User not authenticated'
+//       };
+//     }
+
+//     const userId = user.id;
+
+//     console.log('USER:', userId);
+
+//     // First try to find user with their address
+//     const existingUser = await client.user.findUnique({
+//       where: {
+//         clerkId: userId
+//       },
+//       include: {
+//         addresses: true
+//       }
+//     });
+
+//     if (!existingUser) {
+//       return {
+//         success: false,
+//         error: 'User not found'
+//       };
+//     }
+
+//     let address;
+
+//     const addressData = {
+//       street: data.street || '',
+//       city: data.city || '',
+//       state: data.state || '',
+//       postalCode: data.postalCode || '',
+//       country: data.country || ''
+//     };
+
+//     if (existingUser.addresses) {
+//       // Update existing address
+//       address = await client.address.update({
+//         where: {
+//           userId: existingUser.id  // Using userId since it's unique in Address model
+//         },
+//         data: addressData
+//       });
+//     } else {
+//       // Create new address
+//       address = await client.address.create({
+//         data: {
+//           ...addressData,
+//           userId: existingUser.id
+//         }
+//       });
+//     }
+
+//     return {
+//       success: true,
+//       data: address
+//     };
+
+//   } catch (error) {
+//     console.error('Error updating address:', error);
+//     return {
+//       success: false,
+//       error: error instanceof Error ? error.message : 'Failed to update address'
+//     };
+//   }
+// }
+
+export async function addAddress(data: AddressData) {
+  const user = await currentUser();
+
+  if (!user) {
+    return {
+      success: false,
+      error: 'User not authenticated',
+    };
+  }
+
+  const userId = user.id;
+
+  console.log('USER:', userId);
+  console.log('Address:', data);
+
+  try {
+    const address = await client.address.create({
+      data: {
+        id: data.id || undefined, // Optional: if `data` contains an ID.
+        street: data.street,
+        city: data.city,
+        state: data.state,
+        postalCode: data.postalCode,
+        country: data.country,
+        isDefault: data.isDefault || false,
+        userId: userId,
+      },
+    });
+
+    return {
+      success: true,
+      address,
+    };
+  } catch (error) {
+    console.error('Error creating address:', error);
+    return {
+      success: false,
+      error: 'Failed to create address',
     };
   }
 }
