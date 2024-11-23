@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { addToCart } from "@/lib/queries";
+import { redirect } from "next/navigation";
 
 
 export default function ProductDetailPage({ product }) {
@@ -19,6 +20,8 @@ export default function ProductDetailPage({ product }) {
 
 
   const handleAddToCart = async () => {
+
+    
  
     try {
       setIsLoading(true);

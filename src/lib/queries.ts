@@ -2,7 +2,8 @@
 
 import { currentUser } from "@clerk/nextjs/server";
 import { client } from "./prisma";
-import { type User, type Address } from "@prisma/client";
+import { type User, type Address, CartItem, OrderStatus } from "@prisma/client";
+import { redirect } from "next/navigation";
 
 type AuthUserResponse = {
   success: boolean;
@@ -33,6 +34,16 @@ interface AddressData {
   isDefault?: boolean; // Optional
 }
 
+
+ type CreateOrderInput = {
+
+  amount: number;
+  email?: string;
+  items: CartItem[];
+  paymentIntentId?: string;
+  shippingAddress?: string
+  productId? : string
+};
 
 export const getAuthUserDetails = async (): Promise<AuthUserResponse> => {
   try {
@@ -399,12 +410,17 @@ export async function addToCart(
   const main = await currentUser();
 
   if (!main) {
-    console.log('no user found');
+
+    // redirect('/sign-in')
+    return { error: "You must be logged in to add items to cart" };
+  
+
   } else {
     console.log('User ID:', main.id);  // This will log: user_2ouKHl6e2gtFipmrakrWBJkLeW8
   }
 
   const userId = main.id
+  
 
 
   try {
@@ -465,7 +481,7 @@ export async function getCart(): Promise<CartResponse> {
 
   const userId = main.id
 
-  if(!userId) return null
+  if(!userId)  return redirect('/sign-in')
 
   try {
     const cart = await client.cart.findUnique({
@@ -729,3 +745,200 @@ export async function addAddress(data: AddressData) {
     };
   }
 }
+
+
+
+
+// Create a new order
+export async function createOrder(input: CreateOrderInput) {
+
+  const user = await currentUser();
+
+  if (!user) {
+    return {
+      success: false,
+      error: 'User not authenticated',
+    };
+  }
+
+  const userId = user.id;
+
+
+
+  try {
+
+    const order = await client.order.create({
+      data: {
+        userId: userId,
+        amount: input.amount,
+        email: input.email,
+        paymentIntentId: input.paymentIntentId,
+        status: OrderStatus.PENDING,
+        shippingAddress: input.shippingAddress,
+        items: {
+          create: input.items.map(item => ({
+            quantity: item.quantity,
+            price: 100,
+            product: {
+              connect: { id: item.productId }
+            }
+          })),
+        },
+      },
+      include: {
+        items: {
+          include: {
+            product: {
+              include: {
+                images: true
+              }
+            }
+          }
+        },
+        user: {
+          select: {
+            email: true,
+            firstName: true,
+            lastName: true
+          }
+        }
+      },
+    });
+
+
+ 
+    if (!order) {
+      return {
+        success: false,
+        error: 'Failed to create order'
+      };
+    }
+
+    try {
+
+      for (const item of input.items) {
+        await removeFromCart(userId, item.productId);
+      }
+      
+    } catch (cartError) {
+      console.error('Error removing items from cart:', cartError);
+      // Note: We don't return here since the order was still created successfully
+    }
+
+    return {
+      success: true,
+      data: order
+    };
+    
+  } catch (error) {
+    console.log(error)
+    
+  }
+  
+  
+}
+
+// Get order by ID
+export async function getOrderById(orderId: string) {
+  return client.order.findUnique({
+    where: { id: orderId },
+    include: {
+      items: {
+        include: {
+          product: {
+            include: {
+              images: true
+            }
+          }
+        }
+      },
+      user: {
+        select: {
+          email: true,
+          firstName: true,
+          lastName: true
+        }
+      }
+    },
+  });
+}
+
+// Get orders by user ID
+export async function getUserOrders(userId: string) {
+  return client.order.findMany({
+    where: { userId },
+    include: {
+      items: {
+        include: {
+          product: {
+            include: {
+              images: true
+            }
+          }
+        }
+      }
+    },
+    orderBy: {
+      createdAt: 'desc',
+    },
+  });
+}
+
+// Update order status
+export async function updateOrderStatus(orderId: string, status: OrderStatus) {
+  return client.order.update({
+    where: { id: orderId },
+    data: { status },
+    include: {
+      items: {
+        include: {
+          product: true
+        }
+      }
+    }
+  });
+}
+
+// Update payment intent ID
+export async function updatePaymentIntent(orderId: string, paymentIntentId: string) {
+  return client.order.update({
+    where: { id: orderId },
+    data: { 
+      paymentIntentId,
+      status: OrderStatus.PROCESSING // Optionally update status when payment intent is added
+    },
+    include: {
+      items: {
+        include: {
+          product: true
+        }
+      }
+    }
+  });
+}
+
+// Get order by payment intent ID
+export async function getOrderByPaymentIntent(paymentIntentId: string) {
+  return client.order.findUnique({
+    where: { paymentIntentId },
+    include: {
+      items: {
+        include: {
+          product: {
+            include: {
+              images: true
+            }
+          }
+        }
+      },
+      user: {
+        select: {
+          email: true,
+          firstName: true,
+          lastName: true
+        }
+      }
+    },
+  });
+}
+

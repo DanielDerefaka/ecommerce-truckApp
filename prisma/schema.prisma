@@ -1,5 +1,3 @@
-// This is your Prisma schema file
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -33,10 +31,9 @@ model User {
   phone         String?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
-  cart         Cart?
-  // Address relation
+  cart          Cart?
   addresses     Address[]
-
+  orders        Order[]    // Renamed from order to orders for clarity
 }
 
 model Address {
@@ -47,47 +44,43 @@ model Address {
   postalCode    String
   country       String
   isDefault     Boolean   @default(false)
-  
-  // User relation
   userId        String
   user          User      @relation(fields: [userId], references: [clerkId])
+
+  @@index([userId])
 }
 
-
-
 model Product {
-  id            String    @id @default(cuid())
+  id            String      @id @default(cuid())
   name          String?
   description   String?
   price         Int?
   stock         Int?
-  loction       String
+  loction       String      // Note: "loction" might be a typo of "location"
   miles         String
   images        Image[]
-
-    // Category relation
   categoryId    String
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  cartItems     CartItem[]  // Add relation to CartItem
+  orderItems    OrderItem[] // Add relation to OrderItem
 
-  
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  @@index([categoryId])
 }
-
 
 model Image {
   id         String   @id @default(cuid())
   url        String
   productId  String
-  product    Product  @relation(fields: [productId], references: [id] , onDelete: Cascade)
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
 }
 
 model Category {
-  id            String    @id @default(cuid())
-  name          String    @unique
- 
+  id        String    @id @default(cuid())
+  name      String    @unique
 }
-
-// Add these models to your schema.prisma
 
 model Cart {
   id        String      @id @default(cuid())
@@ -96,6 +89,8 @@ model Cart {
   items     CartItem[]
   createdAt DateTime    @default(now())
   updatedAt DateTime    @updatedAt
+
+  @@index([userId])
 }
 
 model CartItem {
@@ -103,9 +98,42 @@ model CartItem {
   cartId    String
   cart      Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
   productId String
+  product   Product  @relation(fields: [productId], references: [id]) // Add product relation
   quantity  Int      @default(1)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@unique([cartId, productId])
+  @@index([cartId])
+  @@index([productId])
+}
+
+model Order {
+  id              String      @id @default(cuid())
+  amount          Int
+  status          OrderStatus @default(PENDING) // Changed to use OrderStatus enum
+  email           String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  paymentIntentId String?     @unique
+  items           OrderItem[]
+  userId          String
+  user            User        @relation(fields: [userId], references: [clerkId])
+  shippingAddress String?     // Add shipping address
+  
+  @@index([userId])
+  @@index([paymentIntentId])
+}
+
+model OrderItem {
+  id        String   @id @default(cuid())
+  orderId   String
+  order     Order    @relation(fields: [orderId], references: [id])
+  productId String
+  product   Product  @relation(fields: [productId], references: [id]) // Add product relation
+  quantity  Int
+  price     Int      // Price at time of order
+  
+  @@index([orderId])
+  @@index([productId])
 }

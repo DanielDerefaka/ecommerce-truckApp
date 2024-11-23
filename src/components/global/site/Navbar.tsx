@@ -17,7 +17,9 @@ import CartButton from "./Cart";
 const Navbar: React.FC = async () => {
   const user = await currentUser();
  
-
+  if(!user) (
+    console.log('no user')
+  )
   return (
     <Menubar className="rounded-none bg-white border-b border-gray-100 py-8 sticky top-0 z-50 shadow-sm">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center">

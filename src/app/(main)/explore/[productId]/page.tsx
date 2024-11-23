@@ -1,5 +1,6 @@
 import ProductPage from '@/components/global/site/SpecificProduct'
 import { getProductsbyId } from '@/lib/queries';
+import { currentUser } from '@clerk/nextjs/server';
 import React from 'react'
 
 const Page = async ({ params }: { params: { productId: string } }) => {
@@ -9,7 +10,7 @@ const Page = async ({ params }: { params: { productId: string } }) => {
 
   }
 
-
+const user = await currentUser();
   const id  = params.productId;
 
  
@@ -21,7 +22,7 @@ const Page = async ({ params }: { params: { productId: string } }) => {
       <div>
         {/* {id.id} */}
        
-        <ProductPage  product={product} />
+        <ProductPage   product={product} />
       </div>
     )
   } catch (error) {

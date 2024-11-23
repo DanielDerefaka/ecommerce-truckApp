@@ -7,10 +7,7 @@ import { MapPin, Plus, Minus } from "lucide-react";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
+ 
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -19,6 +16,8 @@ import { getCart, updateCartItemQuantity, removeFromCart } from "@/lib/queries";
 import Image from "next/image";
 import { AddressModal } from "./site/AddressModal";
 import Loading from "./Loading";
+import CheckoutPage from "./StripeTest";
+import CheckoutWrapper from "./CheckoutWrapper";
 
 
 
@@ -152,9 +151,22 @@ const OrderSummary = ({
         <span>Total (with VAT)</span>
         <span>SAR {(subtotal * 1.15).toFixed(2)}</span>
       </div>
-      <Button className="w-full bg-red-500 hover:bg-red-500/90">
+
+      <Dialog >
+                <DialogTrigger asChild>
+                <Button className="w-full bg-red-500 hover:bg-red-500/90">
         Checkout
       </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[425px]">
+                <CheckoutWrapper 
+            amount={subtotal} // Convert to smallest currency unit (cents)
+            items={items} 
+          />
+
+                </DialogContent>
+              </Dialog>
+    
       <div className="flex items-center justify-center gap-4">
         <img src="/placeholder.svg" alt="Visa" className="h-6" />
         <img src="/placeholder.svg" alt="Mastercard" className="h-6" />
@@ -177,6 +189,7 @@ export default function CartPage() {
   }, []);
 
   const loadCartData = async () => {
+    
     try {
       setLoading(true);
       const response: CartResponse = await getCart();

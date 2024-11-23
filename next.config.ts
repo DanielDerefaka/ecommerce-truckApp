@@ -1,6 +1,12 @@
-import type { NextConfig } from "next";
 
-const nextConfig: NextConfig = {
+
+import autoCert from "anchor-pki/auto-cert/integrations/next";
+
+const withAutoCert = autoCert({
+  enabledEnv: "development",
+});
+
+const nextConfig = {
   images: {
     domains: [
       'uploadthing.com',
@@ -25,4 +31,4 @@ const nextConfig: NextConfig = {
 
 };
 
-export default nextConfig;
+export default withAutoCert(nextConfig);
