@@ -6,6 +6,7 @@ export type UserDetailsResponse = {
     error?: string;
   };
 
+  export type OrderStatus = 'PENDING' | 'PROCESSING' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED';
 
   export type UserWithDetails = User & {
     orders?: (Order & {

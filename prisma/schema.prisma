@@ -119,10 +119,13 @@ model Order {
   items           OrderItem[]
   userId          String
   user            User        @relation(fields: [userId], references: [clerkId])
-  shippingAddress String?     // Add shipping address
+  shippingAddress ShippingAdress?     // Add shipping address
   
   @@index([userId])
   @@index([paymentIntentId])
+
+  
+
 }
 
 model OrderItem {
@@ -136,4 +139,18 @@ model OrderItem {
   
   @@index([orderId])
   @@index([productId])
+}
+
+model ShippingAdress {
+  id            String    @id @default(cuid())
+  street        String
+  city          String
+  state         String
+  postalCode    String
+  country       String
+  isDefault     Boolean   @default(true)
+  orderId   String     @unique
+  order     Order    @relation(fields: [orderId], references: [id])
+
+  @@index([orderId])
 }

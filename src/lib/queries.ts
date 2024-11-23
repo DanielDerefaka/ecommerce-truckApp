@@ -2,7 +2,13 @@
 
 import { currentUser } from "@clerk/nextjs/server";
 import { client } from "./prisma";
-import { type User, type Address, CartItem, OrderStatus } from "@prisma/client";
+import {
+  type User,
+  type Address,
+  CartItem,
+  OrderStatus,
+  Order,
+} from "@prisma/client";
 import { redirect } from "next/navigation";
 
 type AuthUserResponse = {
@@ -17,38 +23,61 @@ type UserDetailsResponse = {
   error?: string;
 };
 
-
 type CartResponse = {
   success: boolean;
   data?: any;
   error?: string;
 };
 
+type DeleAddress = {
+  success: boolean;
+  data?: any;
+  error?: string;
+};
+
+interface DeleteAddressResponse {
+  success: boolean;
+  error?: string;
+}
+
 interface AddressData {
-  id?: string; // Optional
+  id?: string;
   street: string;
   city: string;
   state: string;
   postalCode: string;
   country: string;
-  isDefault?: boolean; // Optional
+  isDefault?: boolean;
+  name?: string;
 }
 
+interface Address extends AddressData {
+  id: string;
+  userId: string;
+}
 
- type CreateOrderInput = {
+interface AddressInput {
+  street: string;
+  city: string;
+  state: string;
+  postalCode: string; // Added missing field
+  country: string; // Added missing field
+}
 
+type CreateOrderInput = {
   amount: number;
   email?: string;
   items: CartItem[];
   paymentIntentId?: string;
-  shippingAddress?: string
-  productId? : string
+  shippingAddress?: string;
+  productId?: string;
+  selectedAddress: AddressInput;
 };
 
 export const getAuthUserDetails = async (): Promise<AuthUserResponse> => {
   try {
     const user = await currentUser();
-    
+
     if (!user) {
       return {
         success: false,
@@ -93,7 +122,6 @@ export const getAuthUserDetails = async (): Promise<AuthUserResponse> => {
       success: true,
       data: dbUser,
     };
-
   } catch (error) {
     console.error("Error in getAuthUserDetails:", error);
     return {
@@ -119,7 +147,9 @@ export const checkUserExists = async (clerkId: string): Promise<boolean> => {
 };
 
 // Get user by Clerk ID
-export const getUserByClerkId = async (clerkId: string): Promise<AuthUserResponse> => {
+export const getUserByClerkId = async (
+  clerkId: string
+): Promise<AuthUserResponse> => {
   try {
     const user = await client.user.findUnique({
       where: {
@@ -143,7 +173,6 @@ export const getUserByClerkId = async (clerkId: string): Promise<AuthUserRespons
       success: true,
       data: user,
     };
-
   } catch (error) {
     console.error("Error in getUserByClerkId:", error);
     return {
@@ -153,7 +182,6 @@ export const getUserByClerkId = async (clerkId: string): Promise<AuthUserRespons
     };
   }
 };
-
 
 type UserWithDetails = User & {
   orders?: (Order & {
@@ -190,7 +218,9 @@ type UserWithDetails = User & {
   };
 };
 
-export async function getUserDetails(userId: string): Promise<UserDetailsResponse> {
+export async function getUserDetails(
+  userId: string
+): Promise<UserDetailsResponse> {
   try {
     const userDetails = await client.user.findUnique({
       where: {
@@ -198,10 +228,36 @@ export async function getUserDetails(userId: string): Promise<UserDetailsRespons
       },
       include: {
         addresses: {
-         
+          select: {
+            id: true,
+            street: true,
+            city: true,
+            state: true,
+            postalCode: true,
+            country: true,
+            isDefault: false,
+          },
         },
-      }
-       
+        orders: {
+          select: {
+            id: true,
+            createdAt: true,
+            status: true,
+            items: {
+              select: {
+                quantity: true,
+                price: true,
+                product: true,
+              },
+            },
+
+            // Include any other order fields you need
+          },
+          orderBy: {
+            createdAt: "desc",
+          },
+        },
+      },
     });
 
     if (!userDetails) {
@@ -216,13 +272,13 @@ export async function getUserDetails(userId: string): Promise<UserDetailsRespons
       success: true,
       data: userDetails,
     };
-
   } catch (error) {
     console.error("Error fetching user details:", error);
     return {
       success: false,
       data: null,
-      error: error instanceof Error ? error.message : "Failed to fetch user details",
+      error:
+        error instanceof Error ? error.message : "Failed to fetch user details",
     };
   }
 }
@@ -242,24 +298,23 @@ export async function getProducts() {
         images: {
           select: {
             id: true,
-            url: true
-          }
+            url: true,
+          },
         },
-        
-      }
+      },
     });
-    
+
     return { success: true, data: products };
   } catch (error) {
     console.error("Error fetching products:", error);
     return {
       success: false,
       error: "Failed to fetch products",
-      details: error instanceof Error ? error.message : "Unknown error occurred"
+      details:
+        error instanceof Error ? error.message : "Unknown error occurred",
     };
   }
 }
-
 
 // export async function getProductsbyId(id: string) {
 //   try {
@@ -284,7 +339,7 @@ export async function getProducts() {
 //         id: id
 //       }
 //     });
-    
+
 //     return { success: true, data: products };
 //   } catch (error) {
 //     console.error("Error fetching products:", error);
@@ -295,7 +350,6 @@ export async function getProducts() {
 //     };
 //   }
 // }
-
 
 // export async function getProductsbyId(id: string) {
 //   try {
@@ -337,11 +391,11 @@ export async function getProducts() {
 // }
 
 export async function getProductsbyId(productid: string) {
-  console.log(productid)
+  console.log(productid);
   try {
     const product = await client.product.findUnique({
       where: {
-        id: productid, 
+        id: productid,
       },
       select: {
         id: true,
@@ -355,12 +409,12 @@ export async function getProductsbyId(productid: string) {
         images: {
           select: {
             id: true,
-            url: true
-          }
-        }
-      }
+            url: true,
+          },
+        },
+      },
     });
-    
+
     return product;
   } catch (error) {
     console.error("Error fetching product:", error);
@@ -368,13 +422,15 @@ export async function getProductsbyId(productid: string) {
   }
 }
 
-
-export async function getSimilarProducts(categoryId: string, currentProductId: string) {
+export async function getSimilarProducts(
+  categoryId: string,
+  currentProductId: string
+) {
   try {
     const similarProducts = await client.product.findMany({
       where: {
         categoryId: categoryId,
-        id: { not: currentProductId }
+        id: { not: currentProductId },
       },
       take: 4,
       select: {
@@ -383,45 +439,35 @@ export async function getSimilarProducts(categoryId: string, currentProductId: s
         price: true,
         images: {
           select: {
-            url: true
+            url: true,
           },
-          take: 1
-        }
-      }
-    })
-    
-    return similarProducts
+          take: 1,
+        },
+      },
+    });
+
+    return similarProducts;
   } catch (error) {
-    console.error("Error fetching similar products:", error)
-    throw error
+    console.error("Error fetching similar products:", error);
+    throw error;
   }
 }
 
-
-
 // Add item to cart
 export async function addToCart(
-
-
   productId: string,
   quantity: number
 ): Promise<CartResponse> {
-
   const main = await currentUser();
 
   if (!main) {
-
     // redirect('/sign-in')
     return { error: "You must be logged in to add items to cart" };
-  
-
   } else {
-    console.log('User ID:', main.id);  // This will log: user_2ouKHl6e2gtFipmrakrWBJkLeW8
+    console.log("User ID:", main.id); // This will log: user_2ouKHl6e2gtFipmrakrWBJkLeW8
   }
 
-  const userId = main.id
-  
-
+  const userId = main.id;
 
   try {
     // First, get or create the user's cart
@@ -470,18 +516,17 @@ export async function addToCart(
 
 // Get cart contents
 export async function getCart(): Promise<CartResponse> {
-
   const main = await currentUser();
 
   if (!main) {
-    console.log('no user found');
+    console.log("no user found");
   } else {
-    console.log('User ID:', main.id);  // This will log: user_2ouKHl6e2gtFipmrakrWBJkLeW8
+    console.log("User ID:", main.id); // This will log: user_2ouKHl6e2gtFipmrakrWBJkLeW8
   }
 
-  const userId = main.id
+  const userId = main.id;
 
-  if(!userId)  return redirect('/sign-in')
+  if (!userId) return redirect("/sign-in");
 
   try {
     const cart = await client.cart.findUnique({
@@ -584,7 +629,8 @@ export async function updateCartItemQuantity(
     console.error("Error updating cart item:", error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Failed to update cart item",
+      error:
+        error instanceof Error ? error.message : "Failed to update cart item",
     };
   }
 }
@@ -622,114 +668,111 @@ export async function removeFromCart(
     console.error("Error removing from cart:", error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Failed to remove from cart",
+      error:
+        error instanceof Error ? error.message : "Failed to remove from cart",
     };
   }
 }
 
-
-
-
-// export async function addAddress(data: AddressData) {
-//   try {
-//     const user = await currentUser();
-    
-//     if (!user) {
-//       return {
-//         success: false,
-//         error: 'User not authenticated'
-//       };
-//     }
-
-//     const userId = user.id;
-
-//     console.log('USER:', userId);
-
-//     // First try to find user with their address
-//     const existingUser = await client.user.findUnique({
-//       where: {
-//         clerkId: userId
-//       },
-//       include: {
-//         addresses: true
-//       }
-//     });
-
-//     if (!existingUser) {
-//       return {
-//         success: false,
-//         error: 'User not found'
-//       };
-//     }
-
-//     let address;
-
-//     const addressData = {
-//       street: data.street || '',
-//       city: data.city || '',
-//       state: data.state || '',
-//       postalCode: data.postalCode || '',
-//       country: data.country || ''
-//     };
-
-//     if (existingUser.addresses) {
-//       // Update existing address
-//       address = await client.address.update({
-//         where: {
-//           userId: existingUser.id  // Using userId since it's unique in Address model
-//         },
-//         data: addressData
-//       });
-//     } else {
-//       // Create new address
-//       address = await client.address.create({
-//         data: {
-//           ...addressData,
-//           userId: existingUser.id
-//         }
-//       });
-//     }
-
-//     return {
-//       success: true,
-//       data: address
-//     };
-
-//   } catch (error) {
-//     console.error('Error updating address:', error);
-//     return {
-//       success: false,
-//       error: error instanceof Error ? error.message : 'Failed to update address'
-//     };
-//   }
-// }
-
-export async function addAddress(data: AddressData) {
-  const user = await currentUser();
-
-  if (!user) {
+export async function DeleteAddress(
+  id: string
+): Promise<DeleteAddressResponse> {
+  if (!id) {
     return {
       success: false,
-      error: 'User not authenticated',
+      error: "Address ID is required",
     };
   }
 
-  const userId = user.id;
-
-  console.log('USER:', userId);
-  console.log('Address:', data);
-
   try {
+    // First check if the address exists
+    const address = await client.address.findUnique({
+      where: { id },
+    });
+
+    if (!address) {
+      return {
+        success: false,
+        error: "Address not found",
+      };
+    }
+
+    // Delete the address
+    await client.address.delete({
+      where: { id },
+    });
+
+    return {
+      success: true,
+    };
+  } catch (error) {
+    console.error("Error Deleting Address:", error);
+    return {
+      success: false,
+      error:
+        error instanceof Error ? error.message : "Failed to Delete Address",
+    };
+  }
+}
+export async function getAddress() {
+  try {
+    const user = await currentUser();
+
+    if (!user) {
+      return {
+        success: false,
+        error: "User not authenticated",
+      };
+    }
+
+    // Changed to findMany to get all user addresses
+    const addresses = await client.address.findMany({
+      where: {
+        userId: user.id,
+      },
+      orderBy: {
+        isDefault: "desc", // Default addresses first
+      },
+    });
+
+    return {
+      success: true,
+      addresses,
+    };
+  } catch (error) {
+    console.error("Error fetching addresses:", error);
+    return {
+      success: false,
+      error: "Failed to fetch addresses",
+    };
+  }
+}
+
+export async function addAddress(data: AddressData) {
+  try {
+    const user = await currentUser();
+
+    if (!user) {
+      return {
+        success: false,
+        error: "User not authenticated",
+      };
+    }
+
+    // If this is the first address or marked as default, handle existing default
+    if (data.isDefault) {
+      await client.address.updateMany({
+        where: { userId: user.id, isDefault: true },
+        data: { isDefault: false },
+      });
+    }
+
     const address = await client.address.create({
       data: {
-        id: data.id || undefined, // Optional: if `data` contains an ID.
-        street: data.street,
-        city: data.city,
-        state: data.state,
-        postalCode: data.postalCode,
-        country: data.country,
+        ...data,
+        id: data.id || undefined,
+        userId: user.id,
         isDefault: data.isDefault || false,
-        userId: userId,
       },
     });
 
@@ -738,50 +781,74 @@ export async function addAddress(data: AddressData) {
       address,
     };
   } catch (error) {
-    console.error('Error creating address:', error);
+    console.error("Error creating address:", error);
     return {
       success: false,
-      error: 'Failed to create address',
+      error: "Failed to create address",
     };
   }
 }
 
-
-
-
 // Create a new order
 export async function createOrder(input: CreateOrderInput) {
-
-  const user = await currentUser();
-
-  if (!user) {
-    return {
-      success: false,
-      error: 'User not authenticated',
-    };
-  }
-
-  const userId = user.id;
-
-
-
   try {
+    // Get current user
+    const user = await currentUser();
+    if (!user) {
+      return {
+        success: false,
+        error: "User not authenticated",
+      };
+    }
 
+    // Validate address
+    const { selectedAddress: address } = input;
+    if (
+      !address?.street ||
+      !address?.city ||
+      !address?.state ||
+      !address?.postalCode ||
+      !address?.country
+    ) {
+      return {
+        success: false,
+        error: "Invalid shipping address. All fields are required.",
+      };
+    }
+
+    // Validate items
+    if (!input.items?.length) {
+      return {
+        success: false,
+        error: "Order must contain at least one item",
+      };
+    }
+
+    // Create order with related data
     const order = await client.order.create({
       data: {
-        userId: userId,
+        userId: user.id,
         amount: input.amount,
         email: input.email,
         paymentIntentId: input.paymentIntentId,
         status: OrderStatus.PENDING,
-        shippingAddress: input.shippingAddress,
+        shippingAddress: {
+          create: {
+            street: address.street,
+            city: address.city,
+            state: address.state,
+            postalCode: address.postalCode,
+            country: address.country,
+            isDefault: true,
+          },
+        },
         items: {
-          create: input.items.map(item => ({
+          create: input.items.map((item) => ({
             quantity: item.quantity,
-            price: 100,
+            price: 100, // Note: You might want to get the actual price from the product
             product: {
-              connect: { id: item.productId }
-            }
+              connect: { id: item.productId },
+            },
           })),
         },
       },
@@ -790,52 +857,44 @@ export async function createOrder(input: CreateOrderInput) {
           include: {
             product: {
               include: {
-                images: true
-              }
-            }
-          }
+                images: true,
+              },
+            },
+          },
         },
         user: {
           select: {
             email: true,
             firstName: true,
-            lastName: true
-          }
-        }
+            lastName: true,
+          },
+        },
       },
     });
 
-
- 
-    if (!order) {
-      return {
-        success: false,
-        error: 'Failed to create order'
-      };
-    }
-
+    console.log(order.id);
+    // Attempt to clear cart items
     try {
-
-      for (const item of input.items) {
-        await removeFromCart(userId, item.productId);
-      }
-      
+      await Promise.all(
+        input.items.map((item) => removeFromCart(user.id, item.productId))
+      );
     } catch (cartError) {
-      console.error('Error removing items from cart:', cartError);
-      // Note: We don't return here since the order was still created successfully
+      console.error("Error removing items from cart:", cartError);
+      // Continue since order was created successfully
     }
 
     return {
       success: true,
-      data: order
+      data: order,
+      id: order.id,
     };
-    
   } catch (error) {
-    console.log(error)
-    
+    console.error("Error creating order:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to create order",
+    };
   }
-  
-  
 }
 
 // Get order by ID
@@ -847,24 +906,35 @@ export async function getOrderById(orderId: string) {
         include: {
           product: {
             include: {
-              images: true
-            }
-          }
-        }
+              images: true,
+            },
+          },
+        },
       },
       user: {
         select: {
           email: true,
           firstName: true,
-          lastName: true
-        }
-      }
+          lastName: true,
+        },
+      },
     },
   });
 }
 
 // Get orders by user ID
-export async function getUserOrders(userId: string) {
+export async function getUserOrders() {
+  const user = await currentUser();
+
+  if (!user) {
+    return {
+      success: false,
+      error: "User not authenticated",
+    };
+  }
+
+  const userId = user.id;
+
   return client.order.findMany({
     where: { userId },
     include: {
@@ -872,17 +942,87 @@ export async function getUserOrders(userId: string) {
         include: {
           product: {
             include: {
-              images: true
-            }
-          }
-        }
-      }
+              images: true,
+            },
+          },
+        },
+      },
     },
     orderBy: {
-      createdAt: 'desc',
+      createdAt: "desc",
     },
   });
 }
+
+// export async function getUserOrderbyId(id : string) {
+
+
+  // return client.order.findFirst({
+  //   where: { id: id},
+
+  //   select: {
+
+  //   },
+
+  //   include: {
+  //     items: {
+  //       include: {
+  //         product: {
+  //           include: {
+  //             images: true,
+  //           },
+  //         },
+  //       },
+  //     },
+  //   },
+   
+  // });
+// }
+
+
+export async function getUserOrderbyId(id: string) {
+  console.log(id.id);
+
+  const orderId = id.id
+  try {
+    const product = await client.order.findUnique({
+      where: {
+        id : orderId,
+      },
+      select: {
+        id: true,
+        amount: true,
+        status: true,
+        items: {
+          include: {
+            product: {
+              include: {
+                images: true
+                
+              }
+            }
+
+          }
+        },
+        shippingAddress: true,
+                
+      },
+    });
+
+    return product;
+  } catch (error) {
+    console.error("Error fetching product:", error);
+    throw error;
+  }
+}
+
+
+
+
+
+
+
+
 
 // Update order status
 export async function updateOrderStatus(orderId: string, status: OrderStatus) {
@@ -892,28 +1032,31 @@ export async function updateOrderStatus(orderId: string, status: OrderStatus) {
     include: {
       items: {
         include: {
-          product: true
-        }
-      }
-    }
+          product: true,
+        },
+      },
+    },
   });
 }
 
 // Update payment intent ID
-export async function updatePaymentIntent(orderId: string, paymentIntentId: string) {
+export async function updatePaymentIntent(
+  orderId: string,
+  paymentIntentId: string
+) {
   return client.order.update({
     where: { id: orderId },
-    data: { 
+    data: {
       paymentIntentId,
-      status: OrderStatus.PROCESSING // Optionally update status when payment intent is added
+      status: OrderStatus.PROCESSING, // Optionally update status when payment intent is added
     },
     include: {
       items: {
         include: {
-          product: true
-        }
-      }
-    }
+          product: true,
+        },
+      },
+    },
   });
 }
 
@@ -926,19 +1069,18 @@ export async function getOrderByPaymentIntent(paymentIntentId: string) {
         include: {
           product: {
             include: {
-              images: true
-            }
-          }
-        }
+              images: true,
+            },
+          },
+        },
       },
       user: {
         select: {
           email: true,
           firstName: true,
-          lastName: true
-        }
-      }
+          lastName: true,
+        },
+      },
     },
   });
 }
-

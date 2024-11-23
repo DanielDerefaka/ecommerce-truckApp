@@ -43,7 +43,7 @@ export function AddressModal( open, setOpen) {
       
       if (result.success) {
         toast({
-          title: "Address Updated",
+          title: "Address Saved",
           description: "Your address has been successfully saved.",
           variant: "default",
           duration: 3000,

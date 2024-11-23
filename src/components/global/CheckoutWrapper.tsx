@@ -13,9 +13,10 @@ const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLIC_KEY!);
 interface CheckoutWrapperProps {
   amount: number;
   items: CartItem[];
+  selectedAddress: any
 }
 
-export default function CheckoutWrapper({ amount, items }: CheckoutWrapperProps) {
+export default function CheckoutWrapper({ amount, items , selectedAddress}: CheckoutWrapperProps) {
   const [clientSecret, setClientSecret] = useState("");
 
   useEffect(() => {
@@ -42,7 +43,7 @@ export default function CheckoutWrapper({ amount, items }: CheckoutWrapperProps)
     <div>
       {clientSecret && (
         <Elements stripe={stripePromise} options={options}>
-          <CheckoutForm amount={amount} items={items} />
+          <CheckoutForm amount={amount} items={items} selectedAddress={selectedAddress} />
         </Elements>
       )}
     </div>

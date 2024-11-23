@@ -7,7 +7,6 @@ import { MapPin, Plus, Minus } from "lucide-react";
 import {
   Dialog,
   DialogContent,
- 
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -18,8 +17,7 @@ import { AddressModal } from "./site/AddressModal";
 import Loading from "./Loading";
 import CheckoutPage from "./StripeTest";
 import CheckoutWrapper from "./CheckoutWrapper";
-
-
+import AddressSelector from "./AddressSet";
 
 // Types remain the same
 interface Product {
@@ -47,6 +45,7 @@ interface CartResponse {
   error?: string;
 }
 
+// Component definitions remain the same
 const LoadingState = () => (
   <div className="min-h-screen bg-gray-50 flex items-center justify-center">
     <div className="animate-pulse">
@@ -131,12 +130,24 @@ const CartItem = ({
 const OrderSummary = ({
   items,
   subtotal,
+  selectedAddress
 }: {
   items: CartItem[];
   subtotal: number;
+  selectedAddress: any;
 }) => (
   <Card className="p-6">
     <div className="space-y-4">
+      {selectedAddress && (
+        <div className="border-b pb-4">
+          <h3 className="font-medium mb-2">Delivery Address</h3>
+          <div className="text-sm text-muted-foreground">
+            <p>{selectedAddress.street}</p>
+            <p>{selectedAddress.city}, {selectedAddress.state} {selectedAddress.postalCode}</p>
+            <p>{selectedAddress.country}</p>
+          </div>
+        </div>
+      )}
       <div className="flex justify-between">
         <span className="text-muted-foreground">
           Subtotal ({items.length} items)
@@ -152,44 +163,44 @@ const OrderSummary = ({
         <span>SAR {(subtotal * 1.15).toFixed(2)}</span>
       </div>
 
-      <Dialog >
-                <DialogTrigger asChild>
-                <Button className="w-full bg-red-500 hover:bg-red-500/90">
-        Checkout
-      </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-[425px]">
-                <CheckoutWrapper 
-            amount={subtotal} // Convert to smallest currency unit (cents)
+      <Dialog>
+        <DialogTrigger asChild>
+          <Button className="w-full bg-red-500 hover:bg-red-500/90">
+            Checkout
+          </Button>
+        </DialogTrigger>
+        <DialogContent className="sm:max-w-[425px]">
+          <CheckoutWrapper 
+            amount={subtotal}
             items={items} 
+            selectedAddress={selectedAddress}
           />
-
-                </DialogContent>
-              </Dialog>
+        </DialogContent>
+      </Dialog>
     
       <div className="flex items-center justify-center gap-4">
-        <img src="/placeholder.svg" alt="Visa" className="h-6" />
-        <img src="/placeholder.svg" alt="Mastercard" className="h-6" />
-        <img src="/placeholder.svg" alt="Cash" className="h-6" />
+        <Image src="/vis2.png" alt="Visa" className="h-10 w-10"  width={100} height={100}/>
+        <Image src="/master.png" alt="Mastercard" className="h-10 w-10" width={100} height={100} />
+        <Image src="/cash.webp" alt="Cash" className="h-10 w-10" width={100} height={100} />
       </div>
     </div>
   </Card>
 );
 
 export default function CartPage() {
+  // All hooks must be called at the top level of the component
   const [open, setOpen] = useState(false);
-
   const [cartData, setCartData] = useState<CartData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [updatingItems, setUpdatingItems] = useState<Set<string>>(new Set());
+  const [selectedAddress, setSelectedAddress] = useState<any>(null);
 
   useEffect(() => {
     loadCartData();
   }, []);
 
   const loadCartData = async () => {
-    
     try {
       setLoading(true);
       const response: CartResponse = await getCart();
@@ -206,13 +217,9 @@ export default function CartPage() {
     }
   };
 
-  const handleQuantityUpdate = async (
-    productId: string,
-    newQuantity: number
-  ) => {
+  const handleQuantityUpdate = async (productId: string, newQuantity: number) => {
     if (!cartData?.userId || newQuantity < 1) return;
 
-    // Optimistically update the UI
     setUpdatingItems((prev) => new Set(prev).add(productId));
     setCartData((prev) => {
       if (!prev) return null;
@@ -233,7 +240,6 @@ export default function CartPage() {
         newQuantity
       );
       if (!response.success) {
-        // Revert on failure
         await loadCartData();
         setError(response.error || "Failed to update quantity");
       }
@@ -252,7 +258,6 @@ export default function CartPage() {
   const handleRemoveItem = async (productId: string) => {
     if (!cartData?.userId) return;
 
-    // Optimistically update the UI
     setUpdatingItems((prev) => new Set(prev).add(productId));
     setCartData((prev) => {
       if (!prev) return null;
@@ -265,7 +270,6 @@ export default function CartPage() {
     try {
       const response = await removeFromCart(cartData.userId, productId);
       if (!response.success) {
-        // Revert on failure
         await loadCartData();
         setError(response.error || "Failed to remove item");
       }
@@ -288,6 +292,10 @@ export default function CartPage() {
     }, 0);
   };
 
+  const handleAddressSelect = (address: any) => {
+    setSelectedAddress(address);
+  };
+
   if (loading) return <LoadingState />;
   if (error) return <ErrorState message={error} />;
   if (!cartData) return <ErrorState message="No cart data available" />;
@@ -300,32 +308,9 @@ export default function CartPage() {
         <h1 className="text-2xl font-semibold mb-8">Checkout</h1>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Left Column */}
           <div className="space-y-6">
-            {/* Address Section */}
-            <Card className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-4">
-                  <MapPin className="h-8 w-8 text-muted-foreground" />
-                  <div>
-                    <h2 className="font-semibold">No address saved</h2>
-                  </div>
-                </div>
-              </div>
+            <AddressSelector onAddressSelect={handleAddressSelect} />
 
-              <Dialog open={open} onOpenChange={setOpen}>
-                <DialogTrigger asChild>
-                  <Button variant="outline" className="w-full">
-                    Add new locations
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-[425px]">
-                  <AddressModal open={open} setOpen={setOpen} />
-                </DialogContent>
-              </Dialog>
-            </Card>
-
-            {/* Cart Items */}
             <Card className="p-6">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="font-semibold">
@@ -360,9 +345,12 @@ export default function CartPage() {
             </Card>
           </div>
 
-          {/* Right Column */}
           <div className="space-y-6">
-            <OrderSummary items={cartData.items} subtotal={subtotal} />
+            <OrderSummary 
+              items={cartData.items} 
+              subtotal={subtotal}
+              selectedAddress={selectedAddress}
+            />
           </div>
         </div>
       </main>
