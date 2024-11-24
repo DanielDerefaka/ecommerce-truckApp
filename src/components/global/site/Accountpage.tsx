@@ -33,24 +33,29 @@ import {
   Edit,
   Trash,
   Plus,
+  Loader2,
+  AlertCircle,
 } from "lucide-react";
 import { useUser } from "@clerk/nextjs";
 import { DeleteAddress, getUserDetails } from "@/lib/queries";
 import { redirect } from "next/navigation";
-import { type UserWithDetails } from "@/lib/types"; // You'll need to export the type from your actions file
-import Loading from "../Loading";
+import { type UserWithDetails } from "@/lib/types";
 import LoadingPage from "../loading-page";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { AddressModal } from "./AddressModal";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export default function AccountPage() {
   const { user: clerkUser, isLoaded } = useUser();
   const [isEditing, setIsEditing] = useState(false);
   const [userDetails, setUserDetails] = useState<UserWithDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [activeTab, setActiveTab] = useState("profile");
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     async function fetchUserDetails() {
@@ -60,9 +65,15 @@ export default function AccountPage() {
         const response = await getUserDetails(clerkUser.id);
         if (response.success) {
           setUserDetails(response.data);
+        } else {
+          throw new Error(response.error);
         }
       } catch (error) {
-        console.error("Error fetching user details:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load user details. Please refresh the page.",
+          variant: "destructive",
+        });
       } finally {
         setIsLoading(false);
       }
@@ -71,27 +82,30 @@ export default function AccountPage() {
     if (isLoaded) {
       fetchUserDetails();
     }
-  }, [clerkUser, isLoaded]);
+  }, [clerkUser, isLoaded, toast]);
 
-  if (!isLoaded || isLoading) {
-    return (
-      <div>
-        <LoadingPage />
-      </div>
-    );
-  }
-
-  if (!clerkUser) {
-    redirect("/sign-in");
-  }
+  // Validate phone number
+  const validatePhone = (phone: string) => {
+    const phoneRegex = /^\+?[\d\s-]{10,}$/;
+    return phoneRegex.test(phone);
+  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!userDetails) return;
 
+    const { name, value } = e.target;
     setUserDetails({
       ...userDetails,
-      [e.target.name]: e.target.value,
+      [name]: value,
     });
+
+    // Clear error when user starts typing
+    if (errors[name]) {
+      setErrors({
+        ...errors,
+        [name]: "",
+      });
+    }
   };
 
   const handleLanguageChange = (value: string) => {
@@ -104,21 +118,18 @@ export default function AccountPage() {
   };
 
   const handleDeleteAddress = async (addressId: string) => {
-    console.log(addressId)
     try {
       const response = await DeleteAddress(addressId);
       
       if (response.success) {
-        // Update local state to remove the deleted address
         setUserDetails(prev => prev ? {
           ...prev,
           addresses: prev.addresses.filter(addr => addr.id !== addressId)
         } : null);
 
         toast({
-          title: "Address Deleted",
-          description: "The address has been successfully removed.",
-          variant: "default",
+          title: "Success",
+          description: "Address deleted successfully",
         });
       } else {
         throw new Error(response.error);
@@ -126,7 +137,7 @@ export default function AccountPage() {
     } catch (error) {
       toast({
         title: "Error",
-        description: "Failed to delete address. Please try again.",
+        description: "Failed to delete address",
         variant: "destructive",
       });
     }
@@ -134,17 +145,69 @@ export default function AccountPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsEditing(false);
-    // TODO: Implement update user details action
-    console.log("Updated user data:", userDetails);
+    
+    // Validate form
+    const newErrors: Record<string, string> = {};
+    
+    if (userDetails?.phone && !validatePhone(userDetails.phone)) {
+      newErrors.phone = "Please enter a valid phone number";
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      // TODO: Implement update user details action
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulated delay
+      
+      toast({
+        title: "Success",
+        description: "Profile updated successfully",
+      });
+      setIsEditing(false);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update profile",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  if (!userDetails) {
-    return <div>No user details found</div>;
+  if (!isLoaded || isLoading) {
+    return <LoadingPage />;
   }
 
-  // Get the default address if it exists
-  const defaultAddress = userDetails.addresses?.find((addr) => addr.isDefault);
+  if (!clerkUser) {
+    redirect("/sign-in");
+  }
+
+  if (!userDetails) {
+    return (
+      <Alert variant="destructive" className="max-w-md mx-auto mt-8">
+        <AlertCircle className="h-4 w-4" />
+        <AlertDescription>
+          Unable to load user details. Please refresh the page or contact support.
+        </AlertDescription>
+      </Alert>
+    );
+  }
+
+  const getOrderStatusColor = (status: string) => {
+    const colors = {
+      'pending': 'bg-yellow-100 text-yellow-800',
+      'processing': 'bg-blue-100 text-blue-800',
+      'shipped': 'bg-green-100 text-green-800',
+      'delivered': 'bg-green-500 text-white',
+      'cancelled': 'bg-red-100 text-red-800'
+    };
+    return colors[status.toLowerCase()] || 'bg-gray-100 text-gray-800';
+  };
 
   return (
     <div className="container mx-auto p-6 max-w-4xl">
@@ -152,242 +215,344 @@ export default function AccountPage() {
         <CardHeader>
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <Avatar className="w-20 h-20">
+              <Avatar className="w-20 h-20 ring-2 ring-primary/10">
                 <AvatarImage
                   src={clerkUser.imageUrl}
                   alt={clerkUser.fullName || ""}
                 />
-                <AvatarFallback>
+                <AvatarFallback className="bg-primary/5">
                   {clerkUser.firstName?.[0]}
                   {clerkUser.lastName?.[0]}
                 </AvatarFallback>
               </Avatar>
               <div>
-                <CardTitle className="text-2xl">{clerkUser.fullName}</CardTitle>
-                <CardDescription>
+                <CardTitle className="text-2xl font-bold">
+                  {clerkUser.fullName}
+                </CardTitle>
+                <CardDescription className="text-base">
                   {clerkUser.primaryEmailAddress?.emailAddress}
                 </CardDescription>
-                <div className="flex items-center mt-2 text-sm text-muted-foreground">
-                  <Badge variant="secondary" className="mr-2">
-                    Member since{" "}
-                    {new Date(userDetails.createdAt).toLocaleDateString()}
+                <div className="flex items-center mt-2 gap-2">
+                  <Badge variant="secondary" className="text-xs">
+                    Member since {new Date(userDetails.createdAt).toLocaleDateString()}
                   </Badge>
-                  <Badge variant="secondary">
+                  <Badge variant="secondary" className="text-xs">
                     {userDetails.orders?.length || 0} orders
                   </Badge>
                 </div>
               </div>
             </div>
-            <Button onClick={() => setIsEditing(!isEditing)}>
-              {isEditing ? "Cancel" : "Edit Profile"}
+            <Button 
+              onClick={() => setIsEditing(!isEditing)}
+              variant={isEditing ? "outline" : "default"}
+              className="transition-all"
+            >
+              {isEditing ? (
+                <>Cancel Editing</>
+              ) : (
+                <>
+                  <Edit className="w-4 h-4 mr-2" />
+                  Edit Profile
+                </>
+              )}
             </Button>
           </div>
         </CardHeader>
+
         <CardContent>
-          <Tabs defaultValue="profile" className="w-full">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="grid w-full grid-cols-4">
-              <TabsTrigger value="profile">
+              <TabsTrigger value="profile" className="data-[state=active]:bg-primary/10">
                 <User className="w-4 h-4 mr-2" />
                 Profile
               </TabsTrigger>
-              <TabsTrigger value="orders">
+              <TabsTrigger value="orders" className="data-[state=active]:bg-primary/10">
                 <Package className="w-4 h-4 mr-2" />
                 Orders
               </TabsTrigger>
-              <TabsTrigger value="payments">
+              <TabsTrigger value="payments" className="data-[state=active]:bg-primary/10">
                 <CreditCard className="w-4 h-4 mr-2" />
                 Payments
               </TabsTrigger>
-              <TabsTrigger value="settings">
+              <TabsTrigger value="settings" className="data-[state=active]:bg-primary/10">
                 <Settings className="w-4 h-4 mr-2" />
                 Settings
               </TabsTrigger>
             </TabsList>
-            <TabsContent value="profile">
-              <form onSubmit={handleSubmit} className="space-y-4 mt-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+            <div className="mt-6">
+              <TabsContent value="profile">
+                <form onSubmit={handleSubmit} className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <Label htmlFor="name">Full Name</Label>
+                      <Input
+                        id="name"
+                        name="name"
+                        value={clerkUser.fullName || ""}
+                        disabled={true}
+                        className="bg-muted/50"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Managed by Clerk authentication
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="email">Email Address</Label>
+                      <Input
+                        id="email"
+                        name="email"
+                        type="email"
+                        value={clerkUser.primaryEmailAddress?.emailAddress || ""}
+                        disabled={true}
+                        className="bg-muted/50"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Managed by Clerk authentication
+                      </p>
+                    </div>
+                  </div>
+
                   <div className="space-y-2">
-                    <Label htmlFor="name">Name</Label>
+                    <Label htmlFor="phone">Phone Number</Label>
                     <Input
-                      id="name"
-                      name="name"
-                      value={clerkUser.fullName || ""}
-                      disabled={true} // Name should be managed through Clerk
+                      id="phone"
+                      name="phone"
+                      type="tel"
+                      value={userDetails.phone || ""}
+                      onChange={handleInputChange}
+                      disabled={!isEditing}
+                      placeholder="Enter your phone number"
+                      className={errors.phone ? "border-red-500" : ""}
                     />
+                    {errors.phone && (
+                      <p className="text-sm text-red-500 mt-1">{errors.phone}</p>
+                    )}
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
-                    <Input
-                      id="email"
-                      name="email"
-                      type="email"
-                      value={clerkUser.primaryEmailAddress?.emailAddress || ""}
-                      disabled={true} // Email should be managed through Clerk
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="phone">Phone</Label>
-                  <Input
-                    id="phone"
-                    name="phone"
-                    type="tel"
-                    value={userDetails.phone || ""}
-                    onChange={handleInputChange}
-                    disabled={!isEditing}
-                    placeholder="Enter your phone number"
-                  />
-                </div>
-                <div className="space-y-2">
-                
-                  <div className="flex justify-between gap-5">
-                    <div>
-                    <Label>Default Shipping Address</Label>
+
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <Label className="text-lg">Shipping Addresses</Label>
+                      <Dialog open={open} onOpenChange={setOpen}>
+                        <DialogTrigger asChild>
+                          <Button variant="outline" size="sm">
+                            <Plus className="w-4 h-4 mr-2" />
+                            Add Address
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="sm:max-w-[425px]">
+                          <AddressModal
+                            open={open}
+                            setOpen={setOpen}
+                            address={userDetails.addresses}
+                          />
+                        </DialogContent>
+                      </Dialog>
                     </div>
 
-                    <div>
-                    <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild>
-              <Button variant="outline" className="w-full">
-                <Plus className="mr-2 h-4 w-4" />
-                Add new address
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px]">
-              <AddressModal
-                open={open}
-                setOpen={setOpen}
-                address={userDetails.addresses}
-              
-              />
-            </DialogContent>
-          </Dialog>
-        
-                    </div>
-
-                  </div>
-                  {userDetails.addresses?.map((address) => (
-                    <Card
-                      key={address.id}
-                      className="hover:shadow-md transition-shadow duration-200"
-                    >
-                      <CardContent className="p-4">
-                        <div className="flex items-start justify-between">
-                          <div className="flex items-start space-x-3">
-                            <MapPin className="w-5 h-5 text-primary mt-1" />
-                            <div className="space-y-1">
-                              {address.isDefault && (
-                                <Badge variant="secondary" className="mb-2">
-                                  Default Address
-                                </Badge>
-                              )}
-                              <p className="font-medium text-lg">
-                                {address.street}
-                              </p>
-                              <p className="text-muted-foreground">
-                                {address.city}, {address.state}{" "}
-                                {address.postalCode}
-                              </p>
-                              <p className="text-muted-foreground">
-                                {address.country}
-                              </p>
-                            </div>
-                          </div>
-
-                          <div className="flex items-center space-x-2">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => onEdit?.(address)}
-                              className="hover:bg-secondary"
-                            >
-                              <Edit className="w-4 h-4" />
-                              <span className="sr-only">Edit address</span>
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleDeleteAddress(address.id)}
-                              className="hover:bg-destructive hover:text-destructive-foreground"
-                            >
-                              <Trash className="w-4 h-4" />
-                              <span className="sr-only">Delete address</span>
-                            </Button>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              </form>
-            </TabsContent>
-            <TabsContent value="orders">
-              <div className="space-y-4">
-                {userDetails.orders?.map((order) => (
-                  <div key={order.id} className="border rounded-lg p-4">
-                    <div className="flex justify-between items-center mb-2">
-                      <h3 className="font-medium">Order #{order.id}</h3>
-                      <Badge>{order.status}</Badge>
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      Placed on {new Date(order.createdAt).toLocaleDateString()}
-                    </p>
-                    <p className="font-medium mt-2">Total: ${order.price}</p>
-                    <div className="mt-2">
-                      {order.items.map((item) => (
-                        <div
-                          key={item.id}
-                          className="text-sm text-muted-foreground"
+                    <div className="grid gap-4">
+                      {userDetails.addresses?.map((address) => (
+                        <Card
+                          key={address.id}
+                          className={`transition-all hover:shadow-md ${
+                            address.isDefault ? 'ring-2 ring-primary/10' : ''
+                          }`}
                         >
-                          {item.quantity}x {item.product.name}
-                        </div>
+                          <CardContent className="p-4">
+                            <div className="flex items-start justify-between">
+                              <div className="flex items-start space-x-3">
+                                <MapPin className="w-5 h-5 text-primary mt-1" />
+                                <div className="space-y-1">
+                                  {address.isDefault && (
+                                    <Badge variant="secondary" className="mb-2">
+                                      Default Address
+                                    </Badge>
+                                  )}
+                                  <p className="font-medium text-lg">
+                                    {address.street}
+                                  </p>
+                                  <p className="text-muted-foreground">
+                                    {address.city}, {address.state} {address.postalCode}
+                                  </p>
+                                  <p className="text-muted-foreground">
+                                    {address.country}
+                                  </p>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center space-x-2">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="hover:bg-primary/10"
+                                >
+                                  <Edit className="w-4 h-4" />
+                                  <span className="sr-only">Edit address</span>
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleDeleteAddress(address.id)}
+                                  className="hover:bg-red-100 hover:text-red-600"
+                                >
+                                  <Trash className="w-4 h-4" />
+                                  <span className="sr-only">Delete address</span>
+                                </Button>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
                       ))}
                     </div>
                   </div>
-                ))}
-              </div>
-            </TabsContent>
-            <TabsContent value="payments">
-              <p className="text-muted-foreground">
-                Your payment methods and history will be shown here.
-              </p>
-            </TabsContent>
-            <TabsContent value="settings">
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="preferredLanguage">Preferred Language</Label>
-                  <div className="flex items-center space-x-2">
-                    <Globe className="w-4 h-4 text-muted-foreground" />
-                    <Select
-                      disabled={!isEditing}
-                      value={userDetails.preferredLanguage || "English"}
-                      onValueChange={handleLanguageChange}
-                    >
-                      <SelectTrigger id="preferredLanguage">
-                        <SelectValue placeholder="Select a language" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="English">English</SelectItem>
-                        <SelectItem value="Spanish">Spanish</SelectItem>
-                        <SelectItem value="French">French</SelectItem>
-                        <SelectItem value="German">German</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                </form>
+              </TabsContent>
+
+              <TabsContent value="orders">
+                <div className="space-y-4">
+                  {userDetails.orders?.length ? (
+                    userDetails.orders.map((order) => (
+                      <Card key={order.paymentIntentId} className="hover:shadow-md transition-all">
+                        <CardContent className="p-4">
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <div className="flex items-center gap-2 mb-2">
+                                <h3 className="font-medium">Order #{order.paymentIntentId}</h3>
+                                <Badge className={getOrderStatusColor(order.status)}>
+                                  {order.status}
+                                </Badge>
+                              </div>
+                              <p className="text-sm text-muted-foreground">
+                                Placed on {new Date(order.createdAt).toLocaleDateString()}
+                              </p>
+                            </div>
+                       
+                            <p className="font-medium text-lg">
+                              ${order.price}
+                            </p>
+                          </div>
+                          
+                          <Separator className="my-4" />
+                          
+                          <div className="space-y-2">
+                            <h4 className="text-sm font-medium">Order Items</h4>
+                            <div className="grid gap-2">
+                              {order.items.map((item) => (
+                                <div
+                                  key={item.id}
+                                  className="flex items-center justify-between bg-muted/50 p-2 rounded-md"
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <Badge variant="outline" className="w-8 h-8 flex items-center justify-center p-0">
+                                      {item.quantity}
+                                    </Badge>
+                                    <span className="font-medium">{item.product.name}</span>
+                                  </div>
+                                  <span className="text-muted-foreground">
+                                    ${(item.quantity * item.product.price).toFixed(2)}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))
+                  ) : (
+                    <Card className="bg-muted/50">
+                      <CardContent className="flex flex-col items-center justify-center p-6">
+                        <Package className="w-12 h-12 text-muted-foreground mb-2" />
+                        <p className="text-muted-foreground text-center">
+                          No orders yet. Start shopping to see your order history here!
+                        </p>
+                      </CardContent>
+                    </Card>
+                  )}
                 </div>
-              </div>
-            </TabsContent>
+              </TabsContent>
+
+              <TabsContent value="payments">
+                <Card className="bg-muted/50">
+                  <CardContent className="flex flex-col items-center justify-center p-6">
+                    <CreditCard className="w-12 h-12 text-muted-foreground mb-2" />
+                    <p className="text-muted-foreground text-center">
+                      Payment methods and history will be available soon.
+                    </p>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="settings">
+                <div className="space-y-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="preferredLanguage">Preferred Language</Label>
+                    <div className="flex items-center space-x-2 max-w-xs">
+                      <Globe className="w-4 h-4 text-muted-foreground" />
+                      <Select
+                        disabled={!isEditing}
+                        value={userDetails.preferredLanguage || "English"}
+                        onValueChange={handleLanguageChange}
+                      >
+                        <SelectTrigger id="preferredLanguage" className="w-full">
+                          <SelectValue placeholder="Select a language" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="English">English</SelectItem>
+                          <SelectItem value="Spanish">Spanish (Español)</SelectItem>
+                          <SelectItem value="French">French (Français)</SelectItem>
+                          <SelectItem value="German">German (Deutsch)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <Card className="bg-muted/50">
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-1">
+                          <h4 className="font-medium">Email Notifications</h4>
+                          <p className="text-sm text-muted-foreground">
+                            Manage your email preferences
+                          </p>
+                        </div>
+                        <Button variant="outline" disabled={!isEditing}>
+                          Configure
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              </TabsContent>
+            </div>
           </Tabs>
         </CardContent>
+
         <Separator />
-        <CardFooter className="flex justify-between mt-4">
+        
+        <CardFooter className="flex justify-end gap-2 p-4">
           {isEditing && (
             <>
-              <Button type="submit" onClick={handleSubmit}>
-                Save Changes
-              </Button>
-              <Button variant="outline" onClick={() => setIsEditing(false)}>
+              <Button
+                variant="outline"
+                onClick={() => setIsEditing(false)}
+                disabled={isSaving}
+              >
                 Cancel
+              </Button>
+              <Button
+                type="submit"
+                onClick={handleSubmit}
+                disabled={isSaving}
+                className="min-w-[100px]"
+              >
+                {isSaving ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  'Save Changes'
+                )}
               </Button>
             </>
           )}

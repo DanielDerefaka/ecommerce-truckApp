@@ -74,6 +74,20 @@ type CreateOrderInput = {
   selectedAddress: AddressInput;
 };
 
+function generatePaymentIntentId() {
+  const prefix = 'nh'; // Fixed prefix
+  const length = 5; // Length of random part
+  const characters = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  let result = prefix;
+  
+  for (let i = 0; i < length; i++) {
+      result += characters.charAt(Math.floor(Math.random() * characters.length));
+  }
+  
+  return result;
+}
+
+
 export const getAuthUserDetails = async (): Promise<AuthUserResponse> => {
   try {
     const user = await currentUser();
@@ -316,79 +330,7 @@ export async function getProducts() {
   }
 }
 
-// export async function getProductsbyId(id: string) {
-//   try {
-//     const products = await client.product.findUnique({
-//       select: {
-//         id: true,
-//         name: true,
-//         description: true,
-//         price: true,
-//         stock: true,
-//         categoryId: true,
-//         miles: true,
-//         loction: true,
-//         images: {
-//           select: {
-//             id: true,
-//             url: true
-//           }
-//         },
-//       },
-//       where: {
-//         id: id
-//       }
-//     });
 
-//     return { success: true, data: products };
-//   } catch (error) {
-//     console.error("Error fetching products:", error);
-//     return {
-//       success: false,
-//       error: "Failed to fetch products",
-//       details: error instanceof Error ? error.message : "Unknown error occurred"
-//     };
-//   }
-// }
-
-// export async function getProductsbyId(id: string) {
-//   try {
-//     const product = await client.product.findUnique({
-//       where: {
-//         id: id, // Ensure `id` is passed correctly as a string
-//       },
-//       select: {
-//         id: true,
-//         name: true,
-//         description: true,
-//         price: true,
-//         stock: true,
-//         categoryId: true,
-//         miles: true,
-//         loction: true,
-//         images: {
-//           select: {
-//             id: true,
-//             url: true,
-//           },
-//         },
-//       },
-//     });
-
-//     if (!product) {
-//       return { success: false, error: "Product not found" };
-//     }
-
-//     return { success: true, data: product };
-//   } catch (error) {
-//     console.error("Error fetching product:", error);
-//     return {
-//       success: false,
-//       error: "Failed to fetch product",
-//       details: error instanceof Error ? error.message : "Unknown error occurred",
-//     };
-//   }
-// }
 
 export async function getProductsbyId(productid: string) {
   console.log(productid);
@@ -830,7 +772,7 @@ export async function createOrder(input: CreateOrderInput) {
         userId: user.id,
         amount: input.amount,
         email: input.email,
-        paymentIntentId: input.paymentIntentId,
+        paymentIntentId: generatePaymentIntentId(),
         status: OrderStatus.PENDING,
         shippingAddress: {
           create: {
@@ -993,6 +935,7 @@ export async function getUserOrderbyId(id: string) {
         id: true,
         amount: true,
         status: true,
+        paymentIntentId: true,
         items: {
           include: {
             product: {
@@ -1004,7 +947,20 @@ export async function getUserOrderbyId(id: string) {
 
           }
         },
+
+
         shippingAddress: true,
+
+        user: {
+          select: {
+            email: true,
+            firstName: true,
+            lastName: true,
+            phone: true,
+          },
+        },
+
+        
                 
       },
     });
@@ -1021,23 +977,20 @@ export async function getUserOrderbyId(id: string) {
 
 
 
-
-
-
 // Update order status
-export async function updateOrderStatus(orderId: string, status: OrderStatus) {
-  return client.order.update({
-    where: { id: orderId },
-    data: { status },
-    include: {
-      items: {
-        include: {
-          product: true,
-        },
-      },
-    },
-  });
-}
+// export async function updateOrderStatus(orderId: string, status: OrderStatus) {
+//   return client.order.update({
+//     where: { id: orderId },
+//     data: { status },
+//     include: {
+//       items: {
+//         include: {
+//           product: true,
+//         },
+//       },
+//     },
+//   });
+// }
 
 // Update payment intent ID
 export async function updatePaymentIntent(
@@ -1083,4 +1036,94 @@ export async function getOrderByPaymentIntent(paymentIntentId: string) {
       },
     },
   });
+}
+
+
+
+
+
+// User queries
+export async function getOrderByPaymentIntentId(paymentIntentId: string) {
+  try {
+    const order = await client.order.findUnique({
+      where: {
+        paymentIntentId,
+      },
+      include: {
+        items: {
+          include: {
+            product: true,
+          },
+        },
+        shippingAddress: true,
+      },
+    })
+    return order
+  } catch (error) {
+    throw new Error("Failed to fetch order")
+  }
+}
+
+// Admin queries
+export async function updateOrderStatus(orderId: string, status: OrderStatus) {
+  try {
+    const updatedOrder = await client.order.update({
+      where: {
+        id: orderId,
+      },
+      data: {
+        status,
+      },
+    })
+    return updatedOrder
+  } catch (error) {
+    throw new Error("Failed to update order status")
+  }
+}
+
+export async function updateProductLocation(productId: string, location: string, miles: string) {
+  try {
+    const updatedProduct = await client.product.update({
+      where: {
+        id: productId,
+      },
+      data: {
+        loction: location, // Note: Using the schema's spelling
+        miles,
+      },
+    })
+    return updatedProduct
+  } catch (error) {
+    throw new Error("Failed to update product location")
+  }
+}
+
+// Get all orders for admin
+export async function getAllOrders() {
+  try {
+    const orders = await client.order.findMany({
+      include: {
+        items: {
+          include: {
+            product: true,
+          },
+        },
+        shippingAddress: true,
+        user: {
+          select: {
+            firstName: true,
+            lastName: true,
+            email: true,
+            phone: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    })
+    return orders
+  } catch (error) {
+    throw new Error("Failed to fetch orders")
+  }
 }

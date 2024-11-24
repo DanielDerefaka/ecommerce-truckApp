@@ -57,7 +57,7 @@ export default async function OrdersPage(id:any) {
             <div className="flex justify-between items-start">
               <div>
                 <CardTitle className="text-lg">
-                  Order #{orders.id}
+                  Order #{orders.paymentIntentId}
                 </CardTitle>
                 <p className="text-sm text-gray-500">
                   Placed on {new Date().toLocaleDateString()}

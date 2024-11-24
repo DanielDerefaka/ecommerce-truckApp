@@ -74,6 +74,13 @@ const Navbar: React.FC = async () => {
 
           <MenubarMenu>
             <MenubarTrigger className="flex items-center space-x-1 text-gray-700 hover:text-gray-900 font-medium">
+              <Link href="/tracking">Tracking Product</Link>
+            </MenubarTrigger>
+          </MenubarMenu>
+
+
+          <MenubarMenu>
+            <MenubarTrigger className="flex items-center space-x-1 text-gray-700 hover:text-gray-900 font-medium">
               <Link href="/contact">Contact</Link>
             </MenubarTrigger>
           </MenubarMenu>

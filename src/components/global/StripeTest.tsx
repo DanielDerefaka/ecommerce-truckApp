@@ -35,6 +35,12 @@ export default function CheckoutForm({ amount, items, selectedAddress }: Checkou
       return;
     }
 
+    if (!selectedAddress) {
+      setErrorMessage("Please select a default address ");
+      setLoading(false);
+      return;
+    }
+
     if (!user.emailAddresses?.[0]?.emailAddress) {
       setErrorMessage("Email address is required");
       setLoading(false);
@@ -43,6 +49,14 @@ export default function CheckoutForm({ amount, items, selectedAddress }: Checkou
 
     try {
       // Create the order first
+
+
+    if (!selectedAddress) {
+      setErrorMessage("Please select a default address ");
+      setLoading(false);
+      return;
+    }
+
       const orderResponse = await createOrder({
         amount: convertToSubcurrency(amount),
         email: user.emailAddresses[0].emailAddress,
