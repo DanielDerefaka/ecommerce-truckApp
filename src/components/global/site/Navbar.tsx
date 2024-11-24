@@ -153,6 +153,8 @@ const Navbar = () => {
                     <MobileMenuItem href="/products">Products</MobileMenuItem>
                     <MobileMenuItem href="/tracking">Tracking Product</MobileMenuItem>
                     <MobileMenuItem href="/contact">Contact</MobileMenuItem>
+                    <MobileMenuItem href="/user/account">Account</MobileMenuItem>
+                    
                     
                     {/* Mobile Authentication */}
                     <div className="pt-4 mt-4 border-t border-gray-200">
