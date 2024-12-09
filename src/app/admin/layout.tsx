@@ -3,6 +3,8 @@ import { Inter } from 'next/font/google'
 
 import '@/app/globals.css'
 import { Sidebar } from '@/components/admin/Sidebar'
+import { redirect } from 'next/navigation'
+import { AdminLoginUser } from '@/lib/queries'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -11,11 +13,18 @@ export const metadata: Metadata = {
   description: 'Manage your store with ease',
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
+
+  const authenticated = await AdminLoginUser();
+
+
+  if (authenticated?.status === 400) redirect("/");
+
+  
   return (
     <html lang="en">
       <body className={inter.className}>

@@ -45,7 +45,7 @@ model Address {
   country       String
   isDefault     Boolean   @default(false)
   userId        String
-  user          User      @relation(fields: [userId], references: [clerkId])
+  user          User      @relation(fields: [userId], references: [clerkId], onDelete: Cascade)
 
   @@index([userId])
 }
@@ -85,7 +85,7 @@ model Category {
 model Cart {
   id        String      @id @default(cuid())
   userId    String      @unique
-  user      User        @relation(fields: [userId], references: [clerkId])
+  user      User        @relation(fields: [userId], references: [clerkId], onDelete: Cascade)
   items     CartItem[]
   createdAt DateTime    @default(now())
   updatedAt DateTime    @updatedAt
@@ -98,7 +98,7 @@ model CartItem {
   cartId    String
   cart      Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
   productId String
-  product   Product  @relation(fields: [productId], references: [id]) // Add product relation
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade) // Add product relation
   quantity  Int      @default(1)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -118,7 +118,7 @@ model Order {
   paymentIntentId String?     @unique
   items           OrderItem[]
   userId          String
-  user            User        @relation(fields: [userId], references: [clerkId])
+  user            User        @relation(fields: [userId], references: [clerkId], onDelete: Cascade)
   shippingAddress ShippingAdress?     // Add shipping address
   
   @@index([userId])
@@ -131,9 +131,9 @@ model Order {
 model OrderItem {
   id        String   @id @default(cuid())
   orderId   String
-  order     Order    @relation(fields: [orderId], references: [id])
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
   productId String
-  product   Product  @relation(fields: [productId], references: [id]) // Add product relation
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade) // Add product relation
   quantity  Int
   price     Int      // Price at time of order
   
@@ -150,7 +150,7 @@ model ShippingAdress {
   country       String
   isDefault     Boolean   @default(true)
   orderId   String     @unique
-  order     Order    @relation(fields: [orderId], references: [id])
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   @@index([orderId])
 }

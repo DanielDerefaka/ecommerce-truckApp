@@ -8,6 +8,7 @@ import {
   CartItem,
   OrderStatus,
   Order,
+  Prisma,
 } from "@prisma/client";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
@@ -459,22 +460,14 @@ export async function addToCart(
 
 // Get cart contents
 export async function getCart(): Promise<CartResponse> {
-  const main = await currentUser();
+  const user = await currentUser();
 
-  if (!main) {
-    console.log("no user found");
-  } else {
-    console.log("User ID:", main.id); // This will log: user_2ouKHl6e2gtFipmrakrWBJkLeW8
-  }
-
-  const userId = main.id;
-
-  if (!userId) return redirect("/sign-in");
+  if (!user) return redirect("/sign-in");
 
   try {
     const cart = await client.cart.findUnique({
       where: {
-        userId: userId,
+        userId: user?.id,
       },
       include: {
         items: {
@@ -1129,31 +1122,108 @@ export async function getAllOrders() {
   }
 }
 
+export async function deleteProduct(id: string) {
+  // Validate input
+  if (!id) {
+    console.error('No product ID provided');
+    return { 
+      success: false, 
+      error: 'No product ID provided' 
+    }
+  }
+
+  try {
+    // Verify the product exists before deleting
+    const existingProduct = await client.product.findUnique({
+      where: { id },
+    })
+
+    if (!existingProduct) {
+      console.error(`Product with ID ${id} not found`);
+      return { 
+        success: false, 
+        error: 'Product not found' 
+      }
+    }
+
+    // Perform deletion
+    await client.product.delete({
+      where: { id },
+    })
+
+    revalidatePath('/admin/all-products')
+    return { success: true }
+
+  } catch (error) {
+    console.error('Error in deleteProduct:', error);
+    
+    // More detailed error handling
+    if (error instanceof Error) {
+      return { 
+        success: false, 
+        error: 'Deletion failed', 
+        details: error.message 
+      }
+    }
+
+    return { 
+      success: false, 
+      error: 'Unknown error occurred during deletion' 
+    }
+  }
+}
+
 export async function getProductsAll() {
   try {
     const products = await client.product.findMany({
       include: {
         images: true,
       },
+      orderBy: {
+        createdAt: 'desc' // Assuming you have a createdAt field
+      },
+      take: 100 // Limit to prevent overwhelming queries
     })
     return { products }
   } catch (error) {
     console.error("Error fetching products:", error);
-    return { error: 'Failed to fetch products' }
+    return { 
+      error: 'Failed to fetch products', 
+      details: error instanceof Error ? error.message : 'Unknown error' 
+    }
   }
 }
 
-export async function deleteProduct(id: string) {
-  console.log(id);
-  try {
-    await client.product.delete({
-      where: { id },
-    })
-    revalidatePath('/admin/all-products')
-    return { success: true }
 
+export const AdminLoginUser = async () => {
+  const user = await currentUser()
+  if (!user) redirect('/sign-in')
+
+  try {
+    const authenticated = await client.user.findUnique({
+      where: {
+        clerkId: user.id,
+      },
+      select: {
+        role: true,
+      },
+    })
+
+    if (authenticated && authenticated.role === 'ADMIN') {
+      // If user is an admin, continue to admin dashboard
+   
+      return { status: 200, user: authenticated }
+
+    }
+    else {
+      return {status: 400, user: null}
+    }
+  
+  
+    
   } catch (error) {
-    console.error("Error deleting product:", error);
-    return { error: 'Failed to delete product' }
+    // Handle any errors during authentication
+    console.log(error)
+    return {status: 401, user: null}
   }
 }

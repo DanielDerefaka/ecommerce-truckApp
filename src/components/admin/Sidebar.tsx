@@ -45,8 +45,7 @@ const navigationItems = [
 ]
 
 const toolItems = [
-  { href: '/admin/settings', icon: Settings, label: 'Settings' },
-  { href: '/admin/help', icon: HelpCircle, label: 'Help Center' }
+  
 ]
 
 export function Sidebar() {

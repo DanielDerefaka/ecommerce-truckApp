@@ -1,5 +1,5 @@
 "use client"
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Bell, Search } from 'lucide-react'
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -15,35 +15,70 @@ import {
 } from "@/components/ui/table"
 import { UserButton } from '@clerk/nextjs'
 import { getProducts } from '@/lib/queries'
+import Image from 'next/image'
 
-const topCountries = [
+// Memoized and typed top countries data
+const TOP_COUNTRIES = [
   { name: "Australia", flag: "🇦🇺", value: "34.48K" },
   { name: "Belgium", flag: "🇧🇪", value: "28.67K" },
   { name: "Canada", flag: "🇨🇦", value: "25.12K" }
-]
+] as const;
 
-export default function DashboardPage({ user }:any) {
-  const [products, setProducts] = useState([]);
+// Type definitions for better type safety
+interface Product {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  stock: number;
+  images?: { url: string }[];
+}
+
+// Performance-optimized dashboard component
+export default function DashboardPage({ user }: { user: { firstName: string } }) {
+  // Use React.memo if this becomes a performance bottleneck
+  const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
 
+  // Memoized data fetching with error handling
   useEffect(() => {
-    async function fetchProducts() {
+    const fetchProducts = async () => {
       try {
         const response = await getProducts();
         if (response.success) {
           setProducts(response.data);
         }
-        setIsLoading(false);
       } catch (error) {
         console.error('Failed to fetch products', error);
+      } finally {
         setIsLoading(false);
       }
-    }
+    };
 
     fetchProducts();
-  }, []);
+  }, []); // Empty dependency array ensures one-time fetch
 
-  if (isLoading) return <div>Loading...</div>;
+  // Memoized and filtered products
+  const filteredProducts = useMemo(() => {
+    return products.filter(product => 
+      product.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [products, searchTerm]);
+
+  // Early return for loading state with skeleton loader
+  if (isLoading) {
+    return (
+      <div className="p-6 animate-pulse">
+        <div className="h-20 bg-gray-200 mb-6 rounded"></div>
+        <div className="grid gap-6 md:grid-cols-3">
+          {[1, 2, 3].map(card => (
+            <div key={card} className="bg-gray-200 h-32 rounded"></div>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6">
@@ -55,7 +90,13 @@ export default function DashboardPage({ user }:any) {
         <div className="flex items-center gap-4">
           <div className="relative">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
-            <Input className="w-64 pl-8" placeholder="Search..." type="search" />
+            <Input 
+              className="w-64 pl-8" 
+              placeholder="Search products..." 
+              type="search"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
           </div>
           <Button size="icon" variant="ghost">
             <Bell className="h-5 w-5" />
@@ -69,42 +110,24 @@ export default function DashboardPage({ user }:any) {
       </header>
       
       <div className="grid gap-6 md:grid-cols-3">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Customer</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">1.8K</div>
-            <p className="text-xs text-muted-foreground">
-              <span className="text-green-500">+30% </span>
-              this month
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">$30.58K</div>
-            <p className="text-xs text-muted-foreground">
-              <span className="text-red-500">-15% </span>
-              this month
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Deals</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">2.48K</div>
-            <p className="text-xs text-muted-foreground">
-              <span className="text-green-500">+23% </span>
-              this month
-            </p>
-          </CardContent>
-        </Card>
+        {[
+          { title: "Total Customer", value: "1.8K", change: "+30%", color: "text-green-500" },
+          { title: "Total Revenue", value: "$30.58K", change: "-15%", color: "text-red-500" },
+          { title: "Total Deals", value: "2.48K", change: "+23%", color: "text-green-500" }
+        ].map(metric => (
+          <Card key={metric.title}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">{metric.title}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{metric.value}</div>
+              <p className="text-xs text-muted-foreground">
+                <span className={metric.color}>{metric.change} </span>
+                this month
+              </p>
+            </CardContent>
+          </Card>
+        ))}
       </div>
       
       <div className="mt-6 grid gap-6 md:grid-cols-2">
@@ -122,7 +145,7 @@ export default function DashboardPage({ user }:any) {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {topCountries.map((country) => (
+              {TOP_COUNTRIES.map((country) => (
                 <div key={country.name} className="flex items-center">
                   <div className="w-8 text-2xl">{country.flag}</div>
                   <div className="ml-2 flex-1">{country.name}</div>
@@ -150,15 +173,17 @@ export default function DashboardPage({ user }:any) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {products.map((product, index) => (
+              {filteredProducts.map((product, index) => (
                 <TableRow key={product.id}>
                   <TableCell>{index + 1}</TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
                       {product.images && product.images.length > 0 ? (
-                        <img
+                        <Image
                           src={product.images[0].url} 
                           alt={product.name} 
+                          width={32}
+                          height={32}
                           className="h-8 w-8 rounded-lg object-cover"
                         />
                       ) : (
@@ -189,3 +214,4 @@ export default function DashboardPage({ user }:any) {
     </div>
   )
 }
+
