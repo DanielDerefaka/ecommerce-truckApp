@@ -1227,3 +1227,43 @@ export const AdminLoginUser = async () => {
     return {status: 401, user: null}
   }
 }
+
+export async function getOrders() {
+  
+
+  try {
+    const orders = await client.order.findMany({
+      include: {
+        user: {
+          select: {
+            firstName: true,
+            email: true,
+          }
+        },
+        items: {
+          include: {
+            product: {
+              include: {
+                images: true,
+              }
+            }
+          }
+        }
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
+    });
+
+    return {
+      success: true,
+      orders
+    };
+  } catch (error) {
+    console.error('Error fetching all orders:', error);
+    return {
+      success: false,
+      error: "Failed to retrieve orders"
+    };
+  }
+}
