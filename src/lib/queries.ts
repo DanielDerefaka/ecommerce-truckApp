@@ -10,6 +10,7 @@ import {
   Order,
 } from "@prisma/client";
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 
 type AuthUserResponse = {
   success: boolean;
@@ -1125,5 +1126,34 @@ export async function getAllOrders() {
     return orders
   } catch (error) {
     throw new Error("Failed to fetch orders")
+  }
+}
+
+export async function getProductsAll() {
+  try {
+    const products = await client.product.findMany({
+      include: {
+        images: true,
+      },
+    })
+    return { products }
+  } catch (error) {
+    console.error("Error fetching products:", error);
+    return { error: 'Failed to fetch products' }
+  }
+}
+
+export async function deleteProduct(id: string) {
+  console.log(id);
+  try {
+    await client.product.delete({
+      where: { id },
+    })
+    revalidatePath('/admin/all-products')
+    return { success: true }
+
+  } catch (error) {
+    console.error("Error deleting product:", error);
+    return { error: 'Failed to delete product' }
   }
 }

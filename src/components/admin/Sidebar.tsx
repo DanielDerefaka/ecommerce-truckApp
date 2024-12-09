@@ -41,7 +41,7 @@ const navigationItems = [
   { href: '/admin/analysis', icon: LineChart, label: 'Analysis' },
   { href: '/admin/add-product', icon: ShoppingBag, label: 'Add Product' },
   { href: '/admin/manage-users', icon: User2, label: 'Manage Users' },
-  { href: '/admin/reports', icon: BarChart3, label: 'Reports' }
+  { href: '/admin/all-products', icon: BarChart3, label: 'All Products' }
 ]
 
 const toolItems = [

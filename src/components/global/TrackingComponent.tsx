@@ -225,14 +225,14 @@ export default function TrackingPage({ paymentIntentId }: TrackingPageProps) {
     }
   }, [paymentIntentId])
 
-  // Auto-refresh for non-final statuses
+
   useEffect(() => {
     if (!autoRefresh || !order || !order.paymentIntentId) return
     if ([OrderStatus.DELIVERED, OrderStatus.CANCELLED].includes(order.status)) return
 
     const interval = setInterval(() => {
       fetchOrder(order.paymentIntentId)
-    }, 30000) // Refresh every 30 seconds
+    }, 30000) 
 
     return () => clearInterval(interval)
   }, [autoRefresh, order])

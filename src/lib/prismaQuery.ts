@@ -4,6 +4,7 @@ import { currentUser } from "@clerk/nextjs/server";
 import { client } from "./prisma";
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
+import { type User, Role } from "@prisma/client";
 
 const ProductSchema = z.object({
     name: z.string().min(1, "Product name is required"),
@@ -84,4 +85,189 @@ export async function createProduct(input: CreateProductInput) {
             ? error 
             : new Error("Failed to create product");
     }
+}
+
+
+
+
+
+
+// Response type for user operations
+interface UserResponse {
+  success: boolean;
+  data?: any;
+  error?: string;
+}
+
+// Type for user data with role
+interface UserWithRole extends User {
+  role: Role;
+}
+
+/**
+ * Get all users with their roles
+ */
+export async function getAllUsers(): Promise<UserResponse> {
+  try {
+    const users = await client.user.findMany({
+      select: {
+        id: true,
+        clerkId: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        role: true,
+        imageUrl: true,
+        createdAt: true,
+        updatedAt: true
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
+    });
+
+    return {
+      success: true,
+      data: users
+    };
+  } catch (error) {
+    console.error("Error fetching users:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to fetch users"
+    };
+  }
+}
+
+/**
+ * Delete a user by ID
+ */
+export async function deleteUser(userId: string): Promise<UserResponse> {
+  try {
+    // First check if the user exists
+    const existingUser = await client.user.findUnique({
+      where: { id: userId }
+    });
+
+    if (!existingUser) {
+      return {
+        success: false,
+        error: "User not found"
+      };
+    }
+
+    // Delete related records first
+    // Delete user's cart
+    await client.cart.deleteMany({
+      where: { userId: userId }
+    });
+
+    // Delete user's addresses
+    await client.address.deleteMany({
+      where: { userId: userId }
+    });
+
+    // Delete user's orders
+    await client.order.deleteMany({
+      where: { userId: userId }
+    });
+
+    // Finally delete the user
+    const deletedUser = await client.user.delete({
+      where: { id: userId }
+    });
+
+    return {
+      success: true,
+      data: deletedUser
+    };
+  } catch (error) {
+    console.error("Error deleting user:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to delete user"
+    };
+  }
+}
+
+/**
+ * Search users by name or email
+ */
+export async function searchUsers(searchTerm: string): Promise<UserResponse> {
+  try {
+    const users = await client.user.findMany({
+      where: {
+        OR: [
+          {
+            firstName: {
+              contains: searchTerm,
+              mode: 'insensitive'
+            }
+          },
+          {
+            lastName: {
+              contains: searchTerm,
+              mode: 'insensitive'
+            }
+          },
+          {
+            email: {
+              contains: searchTerm,
+              mode: 'insensitive'
+            }
+          }
+        ]
+      },
+      select: {
+        id: true,
+        clerkId: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        role: true,
+        imageUrl: true
+      }
+    });
+
+    return {
+      success: true,
+      data: users
+    };
+  } catch (error) {
+    console.error("Error searching users:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to search users"
+    };
+  }
+}
+
+/**
+ * Update user role
+ */
+export async function updateUserRole(userId: string, role: Role): Promise<UserResponse> {
+  try {
+    const updatedUser = await client.user.update({
+      where: { id: userId },
+      data: { role },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        role: true
+      }
+    });
+
+    return {
+      success: true,
+      data: updatedUser
+    };
+  } catch (error) {
+    console.error("Error updating user role:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to update user role"
+    };
+  }
 }
