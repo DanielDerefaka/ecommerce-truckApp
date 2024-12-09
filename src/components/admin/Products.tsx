@@ -183,8 +183,10 @@ const AddProductPage = () => {
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              <SelectItem value="health">Health & Medicine</SelectItem>
-                              <SelectItem value="beauty">Beauty</SelectItem>
+                              <SelectItem value="Heavy">Heavy duty</SelectItem>
+                              <SelectItem value="Light">Light duty</SelectItem>
+                              <SelectItem value="Medium">Medium duty</SelectItem>
+                          
                             </SelectContent>
                           </Select>
                           <FormMessage />

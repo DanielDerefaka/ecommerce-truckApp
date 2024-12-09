@@ -12,7 +12,8 @@ import {
   User2, 
   X,
   HelpCircle,
-  BarChart3
+  BarChart3,
+  ShoppingCart
 } from 'lucide-react'
 import Link from "next/link"
 import { useState, useEffect } from "react"
@@ -41,7 +42,8 @@ const navigationItems = [
   { href: '/admin/analysis', icon: LineChart, label: 'Analysis' },
   { href: '/admin/add-product', icon: ShoppingBag, label: 'Add Product' },
   { href: '/admin/manage-users', icon: User2, label: 'Manage Users' },
-  { href: '/admin/all-products', icon: BarChart3, label: 'All Products' }
+  { href: '/admin/all-products', icon: BarChart3, label: 'All Products' },
+  { href: '/admin/all-orders', icon: ShoppingCart, label: 'All Orders' }
 ]
 
 const toolItems = [
