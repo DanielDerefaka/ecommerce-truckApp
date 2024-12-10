@@ -9,8 +9,11 @@ import { AdminLoginUser } from '@/lib/queries'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'X',
-  description: 'Manage your store with ease',
+  title: 'Admin Cage Truckings',
+  description: 'Manage Admin Panel easier',
+  icons: {
+    icon: "/truckLogo.ico",
+  },
 }
 
 export default async function RootLayout({
