@@ -167,7 +167,7 @@ export default function DashboardPage({ user }: { user: { firstName: string } })
               <TableRow>
                 <TableHead>S/NO</TableHead>
                 <TableHead>Product Name</TableHead>
-                <TableHead>Description</TableHead>
+                {/* <TableHead>Description</TableHead> */}
                 <TableHead>Price</TableHead>
                 <TableHead>Stock</TableHead>
               </TableRow>
@@ -192,7 +192,7 @@ export default function DashboardPage({ user }: { user: { firstName: string } })
                       {product.name}
                     </div>
                   </TableCell>
-                  <TableCell>{product.description}</TableCell>
+                  {/* <TableCell>{product.description}</TableCell> */}
                   <TableCell>${product.price}</TableCell>
                   <TableCell>
                     <span
