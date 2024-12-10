@@ -412,12 +412,12 @@ export default function AccountPage() {
                 <div className="space-y-4">
                   {userDetails.orders?.length ? (
                     userDetails.orders.map((order) => (
-                      <Card key={order.paymentIntentId} className="hover:shadow-md transition-all">
+                      <Card key={order.id} className="hover:shadow-md transition-all">
                         <CardContent className="p-4">
                           <div className="flex justify-between items-start">
                             <div>
                               <div className="flex items-center gap-2 mb-2">
-                                <h3 className="font-medium">Order #{order.paymentIntentId}</h3>
+                                <h3 className="font-medium">Order # {order.paymentIntentId} </h3>
                                 <Badge className={getOrderStatusColor(order.status)}>
                                   {order.status}
                                 </Badge>
@@ -428,7 +428,7 @@ export default function AccountPage() {
                             </div>
                        
                             <p className="font-medium text-lg">
-                              ${order.price}
+                              ${order.amount}
                             </p>
                           </div>
                           

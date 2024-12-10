@@ -259,6 +259,7 @@ export async function getUserDetails(
             id: true,
             createdAt: true,
             status: true,
+            paymentIntentId: true,
             items: {
               select: {
                 quantity: true,
