@@ -44,6 +44,7 @@
     "@stripe/react-stripe-js": "^3.0.0",
     "@stripe/stripe-js": "^5.2.0",
     "@uploadthing/react": "^7.1.1",
+    "@vercel/analytics": "^1.4.1",
     "anchor-pki": "^0.3.2",
     "bcryptjs": "^2.4.3",
     "class-variance-authority": "^0.7.0",
