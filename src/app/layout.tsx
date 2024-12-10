@@ -16,7 +16,7 @@ export const metadata: Metadata = {
   icons: {
     icon: "/truckLogo.ico",
   },
-  keywords: " cagetruckings, cage, truck sales, selling trucks, truck, sales, vehicles, ecommerce",
+  keywords: " cagetruckings, cage, web trucks, truck sales, selling trucks, truck, sales, vehicles, ecommerce",
 
 };
 
